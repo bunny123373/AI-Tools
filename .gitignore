@@ -21,3 +21,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 # Local app data (chats, users)
+# Python (Render backend)
+__pycache__/
+*.pyc

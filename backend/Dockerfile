@@ -1,6 +1,6 @@
 # AI Toolbox — YouTube tools backend image.
 # Python 3.12 + ffmpeg (used by yt-dlp to merge video/audio into MP4 and to
-# extract M4A audio). Deploys on Render (free tier).
+# extract MP3 audio). Deploys on Render (free tier).
 FROM python:3.12-slim-bookworm
 
 RUN apt-get update \

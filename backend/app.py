@@ -9,7 +9,7 @@ Endpoints:
   POST /youtube/download    {url, kind}      → file (kind: audio|video)
 
 Download engine: yt-dlp + ffmpeg. ffmpeg (installed in the Docker image)
-merges bestvideo+bestaudio into an MP4 and extracts High-Quality M4A audio.
+merges bestvideo+bestaudio into an MP4 and extracts High-Quality MP3 audio.
 CORS is wide open: the frontend lives on Vercel, a different origin.
 """
 import os
@@ -70,7 +70,10 @@ def human_duration(total_sec):
 # cloud/datacenter IPs (Render/Heroku/VPS). Strategy to bypass:
 # 1. non-web player clients (tv / ios / web_safari / android) — these are
 #    rarely behind the same bot wall as the `web` client,
-# 2. chrome TLS impersonation via curl-cffi (yt-dlp `impersonate` string),
+# 2. chrome TLS impersonation via curl-cffi — built as an ImpersonateTarget
+#    and best-effort only: newer yt-dlp/curl_cffi combos crash with an
+#    AssertionError if given a bare string, so any failure disables it and
+#    the extraction is retried once without it (never 502s the pipeline),
 # 3. an E.U. consent-free Accept-Language hint on every request,
 # 4. optional operator cookies: set YT_COOKIES_CONTENT (inline Netscape
 #    cookies.txt text, written to a temp file — ideal for Render env vars)
@@ -96,6 +99,23 @@ def _cookie_file():
         return _COOKIE_FILE_TMP
     path = (os.environ.get("YT_COOKIES") or "").strip()
     return path or None
+
+
+def _impersonate_target():
+    """Chrome TLS impersonation target, or None when unavailable.
+
+    Must be an ImpersonateTarget object (not a string) on modern yt-dlp;
+    any import/version problem silently disables impersonation instead of
+    raising (older yt-dlp, missing curl_cffi, mismatched versions…).
+    """
+    try:
+        import curl_cffi  # noqa: F401
+
+        from yt_dlp.networking.impersonate import ImpersonateTarget
+
+        return ImpersonateTarget(client="chrome", version="124")
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _ua_headers():
@@ -131,12 +151,6 @@ def _ydl_opts(extra=None):
         "extractor_args": YTDL_EXTRACTOR_ARGS,
         "http_headers": _ua_headers(),
     }
-    try:
-        import curl_cffi  # noqa: F401
-
-        opts["impersonate"] = "chrome:124"
-    except ImportError:
-        pass
     cookie_file = _cookie_file()
     if cookie_file:
         opts["cookiefile"] = cookie_file
@@ -144,10 +158,37 @@ def _ydl_opts(extra=None):
     return opts
 
 
+def _run_ydl(url, extra=None, download=False):
+    """Run yt-dlp, retrying once without TLS impersonation.
+
+    Impersonation is best-effort: init-time failures (e.g. the
+    AssertionError from some yt-dlp/curl_cffi combos) are cheap to retry,
+    so the service degrades to plain HTTP instead of 502ing every call.
+    """
+    base = _ydl_opts(extra)
+    target = _impersonate_target()
+    attempts = [target, None] if target else [None]
+    last_exc = None
+    for t in attempts:
+        opts = dict(base)
+        if t is not None:
+            opts["impersonate"] = t
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                return ydl.extract_info(url, download=download)
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+    raise last_exc if last_exc else RuntimeError("yt-dlp failed")
+
+
 def _fetch_info(url):
-    with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
-        info = ydl.extract_info(url, download=False)
+    info = _run_ydl(url)
     vid = info.get("id")
+    # Distinct MP4 video heights, best first — powers the quality picker.
+    heights = set()
+    for fmt in info.get("formats") or []:
+        if (fmt.get("vcodec") or "") not in ("", "none") and fmt.get("height"):
+            heights.add(int(fmt["height"]))
     return {
         "id": vid,
         "url": f"https://www.youtube.com/watch?v={vid}",
@@ -155,6 +196,7 @@ def _fetch_info(url):
         "author": info.get("uploader") or info.get("channel") or "",
         "thumbnail": info.get("thumbnail") or f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg",
         "durationSec": info.get("duration"),
+        "qualities": sorted(heights, reverse=True),
     }
 
 
@@ -281,39 +323,44 @@ def youtube_download():
     body = request.get_json(silent=True) or {}
     url = str(body.get("url") or "").strip()
     kind = "audio" if body.get("kind") == "audio" else "video"
+    quality = str(body.get("quality") or "best").strip().lower()
     vid = video_id(url)
     if not vid:
         return jsonify({"error": "This does not look like a valid YouTube link."}), 400
 
     tmpdir = tempfile.mkdtemp(prefix="ytdl_")
     try:
-        opts = _ydl_opts(
-            {
-                "outtmpl": os.path.join(tmpdir, "%(id)s.%(ext)s"),
-                "windowsfilenames": True,
-                "socket_timeout": 30,
-                "retries": 3,
-            }
-        )
+        extra = {
+            "outtmpl": os.path.join(tmpdir, "%(id)s.%(ext)s"),
+            "windowsfilenames": True,
+            "socket_timeout": 30,
+            "retries": 3,
+        }
         if kind == "audio":
-            # extract the best audio as M4A (ffmpeg step)
-            opts["format"] = "bestaudio[ext=m4a]/bestaudio/best"
-            opts["postprocessors"] = [
-                {"key": "FFmpegExtractAudio", "preferredcodec": "m4a", "preferredquality": "192"}
+            # download the best audio stream, then convert it to MP3 (ffmpeg)
+            extra["format"] = "bestaudio/best"
+            extra["postprocessors"] = [
+                {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}
             ]
         else:
             # bestvideo + bestaudio merged/remuxed into one MP4 (ffmpeg step)
-            opts["format"] = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b"
-            opts["merge_output_format"] = "mp4"
-            opts["postprocessors"] = [
+            height = None
+            m = re.fullmatch(r"(\d{2,4})p?", quality)
+            if m:
+                height = int(m.group(1))
+            if height:
+                extra["format"] = f"bv*[height<={height}][ext=mp4]+ba[ext=m4a]/b[height<={height}]/b"
+            else:
+                extra["format"] = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b"
+            extra["merge_output_format"] = "mp4"
+            extra["postprocessors"] = [
                 {"key": "FFmpegVideoConvertor", "preferedformat": "mp4"},
                 {"key": "FFmpegMerger"},
             ]
 
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            ydl.extract_info(url, download=True)
+        _run_ydl(url, extra=extra, download=True)
 
-        ext = "m4a" if kind == "audio" else "mp4"
+        ext = "mp3" if kind == "audio" else "mp4"
         candidates = [f for f in os.listdir(tmpdir) if f.startswith(vid)]
         if not candidates:
             return jsonify({"error": "The download produced no file."}), 502
@@ -336,7 +383,7 @@ def youtube_download():
         }
         return Response(
             stream(),
-            mimetype="audio/mp4" if kind == "audio" else "video/mp4",
+            mimetype="audio/mpeg" if kind == "audio" else "video/mp4",
             headers=headers,
         )
     except Exception as exc:  # noqa: BLE001

@@ -67,10 +67,34 @@ def human_duration(total_sec):
 
 # YouTube serves a "Sign in to confirm you're not a bot" challenge to
 # cloud/datacenter IPs (Render/Heroku/VPS). Strategy to bypass:
-# 1. tv/ios player clients (seen as a TV app, not a browser tab),
-# 2. chrome impersonation (curl_cffi TLS fingerprint) when installed,
-# 3. an E.U. consent-free Accept-Language hint on every request.
-YTDL_EXTRACTOR_ARGS = {"youtube": {"player_client": ["tv", "ios", "web"]}}
+# 1. non-web player clients (tv / ios / web_safari / android) — these are
+#    rarely behind the same bot wall as the `web` client,
+# 2. chrome TLS impersonation via curl-cffi (yt-dlp `impersonate` string),
+# 3. an E.U. consent-free Accept-Language hint on every request,
+# 4. optional operator cookies: set YT_COOKIES_CONTENT (inline Netscape
+#    cookies.txt text, written to a temp file — ideal for Render env vars)
+#    or YT_COOKIES (path to a cookies.txt in the container). yt-dlp then
+#    authenticates as your browser, which is the only guaranteed fix.
+YTDL_EXTRACTOR_ARGS = {"youtube": {"player_client": ["tv", "ios", "web_safari", "android", "web"]}}
+
+_COOKIE_FILE_TMP = os.path.join(tempfile.gettempdir(), "ytdl_cookies.txt")
+
+
+def _cookie_file():
+    """Resolve a yt-dlp cookiefile from the environment.
+
+    Priority:
+      1. YT_COOKIES_CONTENT — inline cookies.txt text (Render env var).
+      2. YT_COOKIES         — path to a cookies.txt already in the image.
+    Returns None when neither is set, so yt-dlp runs cookie-free.
+    """
+    content = (os.environ.get("YT_COOKIES_CONTENT") or "").strip()
+    if content:
+        with open(_COOKIE_FILE_TMP, "w", encoding="utf-8") as fh:
+            fh.write(content + "\n")
+        return _COOKIE_FILE_TMP
+    path = (os.environ.get("YT_COOKIES") or "").strip()
+    return path or None
 
 
 def _ua_headers():
@@ -94,9 +118,12 @@ def _ydl_opts(extra=None):
     try:
         import curl_cffi  # noqa: F401
 
-        opts["impersonate"] = {"client": "chrome", "version": "124"}
+        opts["impersonate"] = "chrome:124"
     except ImportError:
         pass
+    cookie_file = _cookie_file()
+    if cookie_file:
+        opts["cookiefile"] = cookie_file
     opts.update(extra or {})
     return opts
 

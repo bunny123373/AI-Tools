@@ -1779,6 +1779,77 @@ label > span {
   border-style: dashed;
 }
 
+/* ~ "Generating image…" indicator (distinct from typing dots) ~ */
+.bubble.img-gen {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--fg);
+}
+.bubble.img-gen > svg {
+  color: var(--accent);
+  animation: img-gen-pulse 1.2s ease-in-out infinite;
+  flex: none;
+}
+.img-gen-bar {
+  position: relative;
+  width: 64px;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+  flex: none;
+}
+.img-gen-bar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: img-gen-slide 1.1s ease-in-out infinite;
+}
+@keyframes img-gen-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+@keyframes img-gen-slide {
+  0% {
+    transform: translateX(-105%);
+  }
+  100% {
+    transform: translateX(270%);
+  }
+}
+
+/* ~ Busy spinner for the Images tab generate button area ~ */
+.gen-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gen-status .spinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  flex: none;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ~ Guest gate (signed-out, non-chat tabs) ~ */
 .guest-gate {
   display: flex;

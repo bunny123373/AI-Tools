@@ -60,6 +60,9 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
   const [genAspect, setGenAspect] = useState('1:1')
   // Awaiting the user's style choice for an image (ChatGPT-style ask step).
   const [pendingGen, setPendingGen] = useState<{ prompt: string } | null>(null)
+  // Stage shown by the dedicated "Generating image…" indicator (distinct from
+  // the plain typing dots, so the user knows an image is being rendered).
+  const [genStage, setGenStage] = useState<'generating' | 'preparing' | ''>('')
   // Id of the conversation currently being edited (null = brand-new chat).
   const [convId, setConvId] = useState<string | null>(initialId ?? null)
   const [loadingChat, setLoadingChat] = useState(!!initialId)
@@ -232,6 +235,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
   // the chosen provider engine returns bytes.
   const genImage = async (prompt: string) => {
     setPendingGen(null)
+    setGenStage('generating')
     setBusy(true)
     const isGem = settings.provider === 'gemini'
     const isPut = settings.provider === 'puter'
@@ -254,6 +258,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
         xkiroKey: isXk ? settings.xkiroKey || undefined : undefined,
       })
       // Convert to a compact JPEG data URL so the image survives in history.
+      setGenStage('preparing')
       const image = await downscaleToDataUrl(blob, 1024, 0.85)
       const final: ChatMessage[] = [...messages, { role: 'assistant', content: '', image, imageLabel: prompt, usedModel }]
       setMessages(final)
@@ -267,6 +272,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
       await persist(convId, final)
     } finally {
       setBusy(false)
+      setGenStage('')
     }
   }
 
@@ -277,6 +283,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
     setAttach(null)
     setGenMode(false)
     setPendingGen(null)
+    setGenStage('')
     setConvId(null)
   }
 
@@ -611,6 +618,16 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
                       Generate now
                     </button>
                   </div>
+                </div>
+              </div>
+            ) : genStage ? (
+              <div className="msg assistant">
+                <div className="bubble img-gen">
+                  <ImageIcon size={15} />
+                  <span>{genStage === 'generating' ? 'Generating image… (can take ~30s)' : 'Preparing preview…'}</span>
+                  <span className="img-gen-bar">
+                    <i />
+                  </span>
                 </div>
               </div>
             ) : (busy || loadingChat) && (

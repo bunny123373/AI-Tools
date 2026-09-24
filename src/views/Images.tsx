@@ -320,6 +320,14 @@ function GenerateMode({ settings }: { settings: Settings }) {
             ? 'Generate video'
             : 'Generate image'}
       </button>
+      {busy && (
+        <p className="hint gen-status">
+          <span className="spinner" />
+          {animate && isPuter
+            ? 'Rendering video — this can take up to ~2 min…'
+            : 'Rendering image — usually ~10–30s, hang tight…'}
+        </p>
+      )}
       {engine === 'gemini' ? (
         <p className="hint">
           Powered by{' '}

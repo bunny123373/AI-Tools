@@ -1,0 +1,6 @@
+flask>=3.0
+flask-cors>=4.0
+gunicorn>=21.2
+requests>=2.31
+yt-dlp>=2025.6.9
+youtube-transcript-api>=1.0.0

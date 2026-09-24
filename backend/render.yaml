@@ -1,0 +1,13 @@
+# Render Blueprint — YouTube tools backend (Python/Flask + yt-dlp + ffmpeg).
+# The frontend (Next.js) lives on Vercel and calls these endpoints through the
+# NEXT_PUBLIC_YT_API_URL env var.
+#
+# Deploy: render.com/new → connect the repo → this service is auto-detected,
+# or render.com/new → Blueprint → pick ai-toolbox-youtube-api.
+services:
+  - type: web
+    name: ai-toolbox-youtube-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health

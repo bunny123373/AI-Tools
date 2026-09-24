@@ -109,30 +109,25 @@ browser's localStorage.
 
 For tools and chat you can optionally pass `openrouterKey`, `geminiKey`, `ollamaBaseUrl` in the body.
 
-## ☁️ Deploy to Render (includes the Python backend)
+## ☁️ Deploy: frontend on Vercel + YouTube backend on Render
 
-The repo ships a **`Dockerfile`** (Node.js + **Python 3 + yt-dlp** for the YouTube downloader) and a
-**`render.yaml`** Blueprint. The YouTube Download tool therefore works on the server — no Python
-install needed on individual user devices.
+The app splits cleanly:
 
-1. Push this repo to GitHub.
-2. Go to **https://render.com/new** → connect the GitHub repo → pick the **Blueprint** plan.
-   Render reads `render.yaml` automatically: service name, Docker build, health check (`/api/health`).
-3. On first deploy, Render asks for the **`AUTH_SECRET`** (required). Generate one locally:
-   ```bash
-   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-   ```
-   Then paste it into the Render dashboard env var value.
-4. Optional: add `XKIRO_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `PUTER_AUTH_TOKEN`
-   (server-side key fallbacks), and `AUTH_GOOGLE_ID/SECRET`, `AUTH_GITHUB_ID/SECRET` for OAuth.
-   Users can still paste their own keys in the app's **Settings** (kept in their browser).
-5. The app listens on `$PORT` automatically; the health check is `/api/health`.
+- **Frontend (Vercel)** — this Next.js app. Chat, providers, images, auth, prompt library. Import the repo on vercel.com; it detects Next automatically. Env vars: `AUTH_SECRET` (required), `AUTH_TRUST_HOST=true`, plus optional `XKIRO_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `PUTER_AUTH_TOKEN`, `AUTH_GOOGLE_ID/SECRET`, `AUTH_GITHUB_ID/SECRET`.
+- **Backend (Render)** — the YouTube tools (`backend/`, Python **Flask** + **yt-dlp** with **ffmpeg** for merging MP4 video/audio and extracting M4A audio). Deploy with `backend/render.yaml` (Docker, free tier), or render.com/new → connect the repo → the `ai-toolbox-youtube-api` service. Health check: `/health`. No API keys needed.
+
+Wire them together with one env var on Vercel:
+
+```bash
+NEXT_PUBLIC_YT_API_URL=https://ai-toolbox-youtube-api.onrender.com
+```
+
+When set, the YouTube tools (info, transcript, playlist total, thumbnail, download) call the Render backend. When it's **not** set, everything falls back to the in-app `/api/tools/youtube/*` routes — so local dev keeps working with no changes.
 
 Notes:
 
-- **Ollama is local** — it won't reach your PC from Render. Use xkiro / OpenRouter / Gemini keys
-  (free tiers) for a public instance.
-- **Chat history & accounts** are stored in `.data/` on the server disk. Render free instances have
-  ephemeral disks, so history resets on each redeploy. Add a persistent disk or database before
-  relying on saved history in production.
-- **Tavily web search** remains a per-user key in Settings (no env var).
+- Generate `AUTH_SECRET` locally: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
+- **Ollama is local** — it can't reach your PC from Vercel serverless or Render. Use xkiro / OpenRouter / Gemini keys (free tiers) for a public instance; users can also paste keys in Settings.
+- **Chat history & accounts** are stored in `.data/` on the server disk — ephemeral on Vercel serverless and Render free instances, so they reset on redeploy. Use a database for durable, public deployment.
+- **Tavily web search** stays a per-user key in Settings (no env var).
+- The Render backend opens its endpoints with permissive CORS because the frontend lives on a different origin.

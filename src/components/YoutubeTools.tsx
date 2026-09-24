@@ -19,7 +19,7 @@ import {
   Video,
 } from 'lucide-react'
 import type { Settings, YtDurationItem, YtMode, YouTubeInfo } from '../types'
-import { ytDuration, ytInfo, ytTitle, ytTranscript } from '../api'
+import { fetchYtThumb, ytDownload, ytDuration, ytInfo, ytTitle, ytTranscript } from '../api'
 
 const TABS: { mode: YtMode; label: string; icon: typeof Info }[] = [
   { mode: 'info', label: 'Video info', icon: Info },
@@ -156,20 +156,8 @@ export default function YoutubeTools({
     setBusy(true)
     setErr('')
     try {
-      const id = new URLSearchParams(url).get('v') || url.match(/youtu\.be\/([\w-]+)/)?.[1] || 'video'
-      const res = await fetch('/api/tools/youtube/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, kind: dlKind }),
-      })
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string }
-        throw new Error(data.error || 'Download failed.')
-      }
-      const blob = await res.blob()
-      const cd = res.headers.get('Content-Disposition') || ''
-      const m = cd.match(/filename="([^"]+)"/)
-      saveBlob(blob, m ? m[1] : `${id}.${dlKind === 'audio' ? 'm4a' : 'mp4'}`)
+      const { blob, name } = await ytDownload(url, dlKind)
+      saveBlob(blob, name)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Download failed.')
     } finally {
@@ -180,9 +168,7 @@ export default function YoutubeTools({
   const saveThumb = async () => {
     if (!info) return
     try {
-      const res = await fetch(`/api/tools/youtube/thumb?url=${encodeURIComponent(info.url)}`)
-      if (!res.ok) throw new Error('Could not fetch the thumbnail.')
-      saveBlob(await res.blob(), `${info.id}.jpg`)
+      saveBlob(await fetchYtThumb(info.url), `${info.id}.jpg`)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Thumbnail save failed.')
     }

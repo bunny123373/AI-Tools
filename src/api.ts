@@ -70,19 +70,29 @@ export const runTool = (kind: ToolKind, payload: Record<string, unknown>) =>
   })
 
 // ---- YouTube tools ----
+// The YouTube APIs live in the repo's backend/ service (Render). When
+// NEXT_PUBLIC_YT_API_URL is set (Vercel/cloud), the client calls the remote
+// backend; otherwise it falls back to the same-origin Next routes (local dev).
+
+const YT_BASE = (process.env.NEXT_PUBLIC_YT_API_URL || '').replace(/\/+$/, '')
+const ytPath = (remote: string, local: string) => (YT_BASE ? `${YT_BASE}${remote}` : local)
 
 export const ytInfo = (url: string) =>
-  api<YouTubeInfo>('/api/tools/youtube/info', {
+  api<YouTubeInfo>(ytPath('/youtube/info', '/api/tools/youtube/info'), {
     method: 'POST',
     body: JSON.stringify({ url }),
   })
 
 export const ytTranscript = (url: string) =>
-  api<{ transcript: string; lang: string; label: string }>('/api/tools/youtube/transcript', {
-    method: 'POST',
-    body: JSON.stringify({ url }),
-  })
+  api<{ transcript: string; lang: string; label: string }>(
+    ytPath('/youtube/transcript', '/api/tools/youtube/transcript'),
+    {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    },
+  )
 
+// AI title/description/tags runs on the app server (it needs provider keys).
 export const ytTitle = (payload: Record<string, unknown>) =>
   api<{ result: string; info: YouTubeInfo }>('/api/tools/youtube/title', {
     method: 'POST',
@@ -91,9 +101,37 @@ export const ytTitle = (payload: Record<string, unknown>) =>
 
 export const ytDuration = (urls: string) =>
   api<{ items: YtDurationItem[]; totalSec: number; totalLabel: string; truncated: boolean }>(
-    '/api/tools/youtube/duration',
+    ytPath('/youtube/duration', '/api/tools/youtube/duration'),
     { method: 'POST', body: JSON.stringify({ urls }) },
   )
+
+/** Thumbnail bytes (client saves them locally — avoids CORS via the server). */
+export const fetchYtThumb = async (videoUrl: string): Promise<Blob> => {
+  const res = await fetch(`${ytPath('/youtube/thumb', '/api/tools/youtube/thumb')}?url=${encodeURIComponent(videoUrl)}`)
+  if (!res.ok) throw new Error('Could not fetch the thumbnail.')
+  return res.blob()
+}
+
+/** Download a video/audio file through the backend (streams the bytes). */
+export const ytDownload = async (
+  url: string,
+  kind: 'audio' | 'video',
+): Promise<{ blob: Blob; name: string }> => {
+  const res = await fetch(ytPath('/youtube/download', '/api/tools/youtube/download'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, kind }),
+  })
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(data.error || 'Download failed.')
+  }
+  const blob = await res.blob()
+  const m = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)
+  if (m) return { blob, name: m[1] }
+  const idMatch = url.match(/youtu\.be\/([\w-]+)/)?.[1] || 'video'
+  return { blob, name: `${idMatch}.${kind === 'audio' ? 'm4a' : 'mp4'}` }
+}
 
 export const analyzeImage = (payload: Record<string, unknown>) =>
   api<{ result: string }>('/api/tools/image/analyze', {

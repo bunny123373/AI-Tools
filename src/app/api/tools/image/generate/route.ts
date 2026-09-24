@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { generateGeminiImage, generatePuterImage } from '@/providers'
+import { generateGeminiImage, generatePuterImage, generateXkiroImage } from '@/providers'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,6 +8,10 @@ export const dynamic = 'force-dynamic'
 //   via the current Interactions API, using the user's key or the server-side
 //   GEMINI_API_KEY fallback. Errors (e.g. free-tier "limit: 0 requests per
 //   day") are returned as JSON so the UI can show them.
+// - provider === 'xkiro'   → SenseNova image models via xkiro's OpenAI-style
+//   async endpoint (submit job → poll → download PNG), using the user's key
+//   or the server-side XKIRO_API_KEY fallback.
+// - provider === 'puter'   → Puter's txt2img (free monthly allowance).
 // - anything else → proxies Pollinations.ai (free, no key) because the browser
 //   can't call it directly with a localhost Origin header (HTTP 403). The
 //   bytes stream straight back so the image can be shown and downloaded.
@@ -68,6 +72,32 @@ export async function POST(req: Request) {
     } catch (e) {
       return NextResponse.json(
         { error: e instanceof Error ? e.message : 'Puter image generation failed.' },
+        { status: 502 },
+      )
+    }
+  }
+
+  if (body.provider === 'xkiro') {
+    const width = Math.min(1600, Math.max(64, Number(body.width) || 1024))
+    const height = Math.min(1600, Math.max(64, Number(body.height) || 1024))
+    try {
+      const { data, mimeType } = await generateXkiroImage({
+        prompt: prompt.slice(0, 4000),
+        model: typeof body.model === 'string' && body.model ? body.model : undefined,
+        width,
+        height,
+        xkiroKey: typeof body.xkiroKey === 'string' && body.xkiroKey ? body.xkiroKey : undefined,
+      })
+      return new NextResponse(new Uint8Array(data), {
+        status: 200,
+        headers: {
+          'Content-Type': mimeType || 'image/png',
+          'Cache-Control': 'no-store',
+        },
+      })
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : 'xkiro image generation failed.' },
         { status: 502 },
       )
     }

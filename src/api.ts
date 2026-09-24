@@ -167,8 +167,9 @@ export interface GenerateImagePayload {
   height: number
   seed: number
   model: string
-  provider?: 'gemini' | 'pollinations' | 'puter'
+  provider?: 'gemini' | 'pollinations' | 'puter' | 'xkiro'
   geminiKey?: string
+  xkiroKey?: string
 }
 
 export const generateImage = async (payload: GenerateImagePayload): Promise<Blob> => {

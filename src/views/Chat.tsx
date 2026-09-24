@@ -166,16 +166,22 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
         // ---- In-chat image generation ----
         const isGem = settings.provider === 'gemini'
         const isPut = settings.provider === 'puter'
-        const engine = (isGem ? 'gemini' : isPut ? 'puter' : 'pollinations') as 'gemini' | 'pollinations' | 'puter'
+        const isXk = settings.provider === 'xkiro'
+        const engine = (isGem ? 'gemini' : isXk ? 'xkiro' : isPut ? 'puter' : 'pollinations') as
+          | 'gemini'
+          | 'pollinations'
+          | 'puter'
+          | 'xkiro'
         const [w, h] = GEN_SIZES[genAspect] || GEN_SIZES['1:1']
         const { blob, usedModel } = await generateImageInfo({
           prompt: text,
           width: w,
           height: h,
           seed: Math.floor(Math.random() * 1_000_000_000),
-          model: isGem || isPut ? 'gemini-3.1-flash-image' : 'flux',
+          model: isGem || isPut ? 'gemini-3.1-flash-image' : isXk ? 'sensenova/sensenova-u1.5-lite' : 'flux',
           provider: engine,
           geminiKey: isGem ? settings.geminiKey || undefined : undefined,
+          xkiroKey: isXk ? settings.xkiroKey || undefined : undefined,
         })
         // Convert to a compact JPEG data URL so the image survives in history.
         const image = await downscaleToDataUrl(blob, 1024, 0.85)
@@ -319,7 +325,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
             ))}
           </div>
           <p className="hint composer-note">
-            Image mode — powered by Gemini / Puter / Pollinations (free). The image appears right here in the chat.
+            Image mode — powered by your provider's image model (Gemini / Puter / xkiro) or free Pollinations. The image appears right here in the chat.
           </p>
         </div>
       )}

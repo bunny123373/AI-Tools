@@ -69,7 +69,13 @@ function UploadZone({
 function GenerateMode({ settings }: { settings: Settings }) {
   const [prompt, setPrompt] = useState('')
   const [aspect, setAspect] = useState('1:1')
-  const [model, setModel] = useState(settings.provider === 'gemini' || settings.provider === 'puter' ? 'gemini-3.1-flash-image' : 'flux')
+  const [model, setModel] = useState(
+    settings.provider === 'gemini' || settings.provider === 'puter'
+      ? 'gemini-3.1-flash-image'
+      : settings.provider === 'xkiro'
+        ? 'sensenova/sensenova-u1.5-lite'
+        : 'flux',
+  )
   const [animate, setAnimate] = useState(false)
   const [vidModel, setVidModel] = useState('veo-3.1-lite')
   const [seconds, setSeconds] = useState(4)
@@ -81,16 +87,23 @@ function GenerateMode({ settings }: { settings: Settings }) {
 
   const isGemini = settings.provider === 'gemini'
   const isPuter = settings.provider === 'puter'
-  const engine = isGemini ? 'gemini' : isPuter ? 'puter' : 'pollinations'
+  const isXkiro = settings.provider === 'xkiro'
+  const engine = isGemini ? 'gemini' : isPuter ? 'puter' : isXkiro ? 'xkiro' : 'pollinations'
 
   // When the provider changes, reset the model picker to that engine's default.
   useEffect(() => {
-    setModel(isGemini || isPuter ? 'gemini-3.1-flash-image' : 'flux')
+    setModel(
+      isGemini || isPuter
+        ? 'gemini-3.1-flash-image'
+        : isXkiro
+          ? 'sensenova/sensenova-u1.5-lite'
+          : 'flux',
+    )
     setAnimate(false)
     setUrl('')
     setFallbackNote('')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isGemini])
+  }, [isGemini, isXkiro])
 
   const sizes: Record<string, [number, number]> = {
     '1:1': [1024, 1024],
@@ -114,6 +127,10 @@ function GenerateMode({ settings }: { settings: Settings }) {
     ['grok-imagine-image', 'Grok Imagine (xAI)'],
   ]
 
+  const xkiroModels: [string, string][] = [
+    ['sensenova/sensenova-u1.5-lite', 'SenseNova U1.5 Lite (free)'],
+  ]
+
   // Verified live against Puter via test_mode (Veo 3.1 / Seedance available on
   // this account's free allowance; Kling/Wan ids differ per tier).
   const puterVideoModels: [string, string][] = [
@@ -124,7 +141,7 @@ function GenerateMode({ settings }: { settings: Settings }) {
   ]
 
   const modelLabel = (id: string) =>
-    [...geminiModels, ...puterModels].find(([i]) => i === id)?.[1] ?? id
+    [...geminiModels, ...puterModels, ...xkiroModels].find(([i]) => i === id)?.[1] ?? id
 
   const generate = async () => {
     if (!prompt.trim() || busy) return
@@ -152,8 +169,9 @@ function GenerateMode({ settings }: { settings: Settings }) {
           height: h,
           seed: s,
           model,
-          provider: engine as 'gemini' | 'pollinations' | 'puter',
+          provider: engine as 'gemini' | 'pollinations' | 'puter' | 'xkiro',
           geminiKey: isGemini ? settings.geminiKey || undefined : undefined,
+          xkiroKey: isXkiro ? settings.xkiroKey || undefined : undefined,
         })
         setUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev)
@@ -197,7 +215,7 @@ function GenerateMode({ settings }: { settings: Settings }) {
         </select>
       </label>
       <label className="option-row">
-        <span>{engine === 'gemini' ? 'Gemini image model' : engine === 'puter' ? 'Puter image model' : 'Speed vs quality'}</span>
+        <span>{engine === 'gemini' ? 'Gemini image model' : engine === 'puter' ? 'Puter image model' : engine === 'xkiro' ? 'xkiro image model' : 'Speed vs quality'}</span>
         <select value={model} onChange={(e) => setModel(e.target.value)}>
           {engine === 'gemini' ? (
             geminiModels.map(([id, label]) => (
@@ -207,6 +225,12 @@ function GenerateMode({ settings }: { settings: Settings }) {
             ))
           ) : engine === 'puter' ? (
             puterModels.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))
+          ) : engine === 'xkiro' ? (
+            xkiroModels.map(([id, label]) => (
               <option key={id} value={id}>
                 {label}
               </option>
@@ -286,6 +310,11 @@ function GenerateMode({ settings }: { settings: Settings }) {
           images/video draw credits (Nano Banana ≈ $0.35/image, GPT Image 2 ≈ $0.03 — auto-fallback kicks in when the
           allowance is low). One-time setup: run <code>npm run puter-token</code> in the project folder, then set
           PUTER_AUTH_TOKEN in .env.local and restart the server.
+        </p>
+      ) : engine === 'xkiro' ? (
+        <p className="hint">
+          Powered by <strong>xkiro</strong> — SenseNova U1.5 Lite (free). Uses your xkiro key from Settings (or the
+          server-side XKIRO_API_KEY). Images are generated as an async job and usually take ~10–30s.
         </p>
       ) : (
         <p className="hint">

@@ -32,7 +32,7 @@ export const PROVIDERS: ProviderInfo[] = [
     name: 'xkiro (free models)',
     requiresKey: true,
     keyLabel: 'xkiro API key',
-    keyHint: 'OpenAI-compatible gateway at https://api.xkiro.com/v1 — free models use the ":free" suffix.',
+    keyHint: 'OpenAI-compatible gateway at https://api.xkiro.com/v1 — free chat models use the ":free" suffix; free image generation with sensenova/sensenova-u1.5-lite.',
     free: 'Free models available (:free)',
   },
   {
@@ -706,6 +706,70 @@ export async function generatePuterImage(opts: GeneratePuterImageOpts): Promise<
     }
   }
   throw new Error(lastErr || 'Puter image generation failed.')
+}
+
+export interface GenerateXkiroImageOpts {
+  prompt: string
+  model?: string
+  width: number
+  height: number
+  xkiroKey?: string
+}
+
+// SenseNova image generation via xkiro's OpenAI-compatible API. Submission is
+// async: POST /v1/images/generations returns a job id (HTTP 202), which we poll
+// (GET /v1/images/generations/{id}) until it succeeds, then fetch the image
+// bytes from the returned CDN url. Verified live: model
+// "sensenova/sensenova-u1.5-lite", response data[0].url → PNG.
+export async function generateXkiroImage(opts: GenerateXkiroImageOpts): Promise<{
+  data: Buffer
+  mimeType: string
+}> {
+  const key = opts.xkiroKey || process.env.XKIRO_API_KEY || ''
+  if (!key) throw new Error('xkiro needs an API key. Add it in Settings → xkiro.')
+  const model = opts.model || 'sensenova/sensenova-u1.5-lite'
+  try {
+    const created = await fetchJson('https://api.xkiro.com/v1/images/generations', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        prompt: opts.prompt.slice(0, 4000),
+        size: `${opts.width}x${opts.height}`,
+        n: 1,
+      }),
+    })
+    const jobId = created?.id
+    if (!jobId) throw new Error('xkiro did not return an image job id.')
+    const deadline = Date.now() + 90_000
+    const terminal = ['succeeded', 'completed', 'failed']
+    let job: any = created
+    // Keep polling on any non-terminal status (processing / queued / unknown
+    // intermediate states) so transient statuses never abort the wait.
+    while (!terminal.includes(job?.status)) {
+      if (Date.now() > deadline) throw new Error('Timed out waiting for the xkiro image. Try again in a moment.')
+      await new Promise((r) => setTimeout(r, 2500))
+      job = await fetchJson(`https://api.xkiro.com/v1/images/generations/${encodeURIComponent(jobId)}`, {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+    }
+    if (job?.status === 'failed') {
+      throw new Error(job?.error?.message || 'xkiro image generation failed.')
+    }
+    const url = job?.data?.[0]?.url
+    if (!url) throw new Error('xkiro completed but returned no image URL.')
+    // The CDN link is freshly signed — retry once if the first fetch flakes.
+    let resp = await fetch(url, { signal: AbortSignal.timeout(60_000) })
+    if (!resp.ok) {
+      await new Promise((r) => setTimeout(r, 2000))
+      resp = await fetch(url, { signal: AbortSignal.timeout(60_000) })
+    }
+    if (!resp.ok) throw new Error(`Could not download the generated image (HTTP ${resp.status}).`)
+    const mimeType = resp.headers.get('content-type') || 'image/png'
+    return { data: Buffer.from(await resp.arrayBuffer()), mimeType }
+  } catch (e) {
+    throw new Error(friendlyError(e, 'xkiro image generation failed.'))
+  }
 }
 
 export interface GeneratePuterVideoOpts {

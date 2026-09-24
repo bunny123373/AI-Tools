@@ -11,7 +11,7 @@ A completely free, full-stack AI tools suite. Chat, summarize, improve, translat
 ## ✨ Features
 
 - 💬 **Chat** with any provider/model, Markdown rendering, system prompts
-- 🖼️ **In-chat images** — attach a photo and ask about it, or flip the ✨ composer toggle to generate images right inside the chat (no tab jumps)
+- 🖼️ **In-chat images** — attach a photo and ask about it, or flip the ✨ composer toggle to generate images right inside the chat (no tab jumps; uses Gemini, Puter, xkiro's free SenseNova U1.5 Lite, or free Pollinations)
 - 🤖 **Auto model** — pick “Auto” in the model picker for smart defaults; when you attach an image with a non-vision model it automatically switches to a vision-capable one and tells you
 - 📄 **Summarize** long text
 - ✍️ **Improve / rewrite** text in 5 styles (professional, friendly, concise, casual, formal)

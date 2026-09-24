@@ -8,14 +8,20 @@ export const DEFAULT_SETTINGS: Settings = {
   openrouterKey: '',
   geminiKey: '',
   xkiroKey: 'sk-xt-da8bbf8ca7493566b7fca3f600dcec43a30d9d4ece4398bb',
-  webSearchKey: '',
+  webSearchKey: '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',
   ollamaBaseUrl: 'http://localhost:11434',
 }
 
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
+    if (raw) {
+      const merged = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) }
+      // Prefilled helper keys (web search) are applied even when an older
+      // saved settings object stored an empty string.
+      if (!merged.webSearchKey) merged.webSearchKey = DEFAULT_SETTINGS.webSearchKey
+      return merged
+    }
   } catch {
     // ignore
   }

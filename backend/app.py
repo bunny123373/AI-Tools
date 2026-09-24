@@ -352,10 +352,14 @@ def youtube_download():
                 extra["format"] = f"bv*[height<={height}][ext=mp4]+ba[ext=m4a]/b[height<={height}]/b"
             else:
                 extra["format"] = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b"
+            # NOTE: do NOT register an explicit FFmpegMerger — yt-dlp merges
+            # automatically when merge_output_format is set and only when
+            # multiple streams were actually downloaded. An unconditional
+            # merger crashes with KeyError 'requested_formats' on videos
+            # that only resolve to a single progressive (e.g. 240p) file.
             extra["merge_output_format"] = "mp4"
             extra["postprocessors"] = [
                 {"key": "FFmpegVideoConvertor", "preferedformat": "mp4"},
-                {"key": "FFmpegMerger"},
             ]
 
         _run_ydl(url, extra=extra, download=True)

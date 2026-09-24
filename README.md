@@ -108,3 +108,31 @@ browser's localStorage.
 | POST | `/api/tools/image/generate` | Generate an image `{ prompt, width?, height?, model? }` (streams PNG/JPEG) |
 
 For tools and chat you can optionally pass `openrouterKey`, `geminiKey`, `ollamaBaseUrl` in the body.
+
+## ☁️ Deploy to Render (includes the Python backend)
+
+The repo ships a **`Dockerfile`** (Node.js + **Python 3 + yt-dlp** for the YouTube downloader) and a
+**`render.yaml`** Blueprint. The YouTube Download tool therefore works on the server — no Python
+install needed on individual user devices.
+
+1. Push this repo to GitHub.
+2. Go to **https://render.com/new** → connect the GitHub repo → pick the **Blueprint** plan.
+   Render reads `render.yaml` automatically: service name, Docker build, health check (`/api/health`).
+3. On first deploy, Render asks for the **`AUTH_SECRET`** (required). Generate one locally:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+   ```
+   Then paste it into the Render dashboard env var value.
+4. Optional: add `XKIRO_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `PUTER_AUTH_TOKEN`
+   (server-side key fallbacks), and `AUTH_GOOGLE_ID/SECRET`, `AUTH_GITHUB_ID/SECRET` for OAuth.
+   Users can still paste their own keys in the app's **Settings** (kept in their browser).
+5. The app listens on `$PORT` automatically; the health check is `/api/health`.
+
+Notes:
+
+- **Ollama is local** — it won't reach your PC from Render. Use xkiro / OpenRouter / Gemini keys
+  (free tiers) for a public instance.
+- **Chat history & accounts** are stored in `.data/` on the server disk. Render free instances have
+  ephemeral disks, so history resets on each redeploy. Add a persistent disk or database before
+  relying on saved history in production.
+- **Tavily web search** remains a per-user key in Settings (no env var).

@@ -57,6 +57,30 @@ function sanitizeTitle(title: string): string {
   return t || 'New chat'
 }
 
+/**
+ * Validate + normalize incoming chat messages for storage, keeping the
+ * optional image payloads used by in-chat vision and image generation.
+ */
+export function sanitizeMessages(raw: unknown): ChatMessage[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter(
+      (m): m is ChatMessage =>
+        !!m &&
+        typeof m === 'object' &&
+        ['user', 'assistant', 'system'].includes((m as ChatMessage).role) &&
+        typeof (m as ChatMessage).content === 'string',
+    )
+    .map((m) => ({
+      role: m.role,
+      content: String(m.content),
+      ...(typeof m.imageDataUrl === 'string' ? { imageDataUrl: m.imageDataUrl } : {}),
+      ...(typeof m.image === 'string' ? { image: m.image } : {}),
+      ...(typeof m.imageLabel === 'string' ? { imageLabel: m.imageLabel } : {}),
+      ...(typeof m.usedModel === 'string' ? { usedModel: m.usedModel } : {}),
+    }))
+}
+
 function toSummary(c: HistoryChat): HistorySummary {
   return {
     id: c.id,

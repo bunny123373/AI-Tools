@@ -10,13 +10,16 @@ function parseChatBody(body: unknown): ChatRequest {
   if (!body || typeof body !== 'object') throw new Error('Invalid request body.')
   const b = body as Record<string, unknown>
   const provider = String(b.provider || 'ollama')
-  const messages: ChatMessage[] = Array.isArray(b.messages) ? (b.messages as ChatMessage[]) : []
-  if (!messages.length) throw new Error('No messages provided.')
-  for (const m of messages) {
+  const rawMessages: ChatMessage[] = Array.isArray(b.messages) ? (b.messages as ChatMessage[]) : []
+  if (!rawMessages.length) throw new Error('No messages provided.')
+  for (const m of rawMessages) {
     if (!m || typeof m.content !== 'string' || !['user', 'assistant', 'system'].includes(m.role)) {
       throw new Error('Invalid message: each message needs a role and a content string.')
     }
   }
+  // Strip image fields — image/vision messages go through the analyze endpoint,
+  // and OpenAI-compatible providers reject unknown message keys.
+  const messages: ChatMessage[] = rawMessages.map(({ role, content }) => ({ role, content }))
   return {
     provider,
     model: b.model ? String(b.model) : '',

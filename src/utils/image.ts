@@ -18,8 +18,8 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Downscale + re-encode an image file to a compact JPEG data URL (for AI vision uploads). */
-export async function downscaleToDataUrl(file: File, maxDim = 1280, quality = 0.85): Promise<string> {
+/** Downscale + re-encode an image file (or generated blob) to a compact JPEG data URL (for AI vision uploads / history). */
+export async function downscaleToDataUrl(file: File | Blob, maxDim = 1280, quality = 0.85): Promise<string> {
   const dataUrl = await readFileAsDataUrl(file)
   const img = await loadImage(dataUrl)
   const scale = Math.min(1, maxDim / Math.max(img.width, img.height))

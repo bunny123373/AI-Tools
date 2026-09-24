@@ -5,8 +5,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { auth } from '@/auth'
-import { deleteChatForUser, getChatForUser, saveChatForUser } from '@/lib/history'
-import type { ChatMessage } from '@/types'
+import { deleteChatForUser, getChatForUser, sanitizeMessages, saveChatForUser } from '@/lib/history'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,19 +15,6 @@ async function currentUserId(): Promise<string | null> {
   const store = await cookies()
   const gid = store.get('guest_id')?.value
   return gid ? `guest_${gid}` : null
-}
-
-function validMessages(raw: unknown): ChatMessage[] {
-  if (!Array.isArray(raw)) return []
-  return raw
-    .filter(
-      (m): m is ChatMessage =>
-        !!m &&
-        typeof m === 'object' &&
-        ['user', 'assistant', 'system'].includes((m as ChatMessage).role) &&
-        typeof (m as ChatMessage).content === 'string',
-    )
-    .map((m) => ({ role: m.role, content: String(m.content) }))
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -52,7 +38,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   const chat = saveChatForUser(uid, {
     id,
     title: typeof body.title === 'string' ? body.title : undefined,
-    messages: validMessages(body.messages),
+    messages: sanitizeMessages(body.messages),
     createdAt: created,
   })
   return NextResponse.json({ ok: true, chat })

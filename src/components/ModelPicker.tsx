@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Check, ChevronDown, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ModelChoice, ProviderInfo, Settings } from '../types'
 import { fetchModels, fetchProviders } from '../api'
@@ -55,7 +55,12 @@ export default function ModelPicker({ settings, onChange, big, onOpenSettings }:
       onChange({
         ...settings,
         provider,
-        model: res.models.some((m) => m.id === settings.model) ? settings.model : res.models[0]?.id || '',
+        // "Auto" sticks when switching providers; otherwise keep the current
+        // model if it still exists in the list, else fall back to the first.
+        model:
+          settings.model === 'auto' || res.models.some((m) => m.id === settings.model)
+            ? settings.model
+            : res.models[0]?.id || '',
       })
     } catch (e) {
       setModels([])
@@ -111,6 +116,9 @@ export default function ModelPicker({ settings, onChange, big, onOpenSettings }:
     setOpen(true)
   }
 
+  const isAuto = settings.model === 'auto' || !settings.model
+  const modelLabel = isAuto ? 'Auto' : settings.model
+
   const trigger = big ? (
     <button
       type="button"
@@ -121,7 +129,7 @@ export default function ModelPicker({ settings, onChange, big, onOpenSettings }:
     >
       <span className="picker-trigger-label">
         <span className="picker-trigger-provider">{current.name}</span>
-        <span className="picker-trigger-model">{settings.model || 'Choose a model'}</span>
+        <span className="picker-trigger-model">{modelLabel}</span>
       </span>
       <ChevronDown size={18} className="picker-chevron" />
     </button>
@@ -132,9 +140,9 @@ export default function ModelPicker({ settings, onChange, big, onOpenSettings }:
       onClick={openModal}
       aria-haspopup="dialog"
       aria-expanded={open}
-      title={`Model: ${settings.model || 'none'} · ${current.name}`}
+      title={`Model: ${modelLabel} · ${current.name}`}
     >
-      <span className="picker-trigger-model">{settings.model || 'Model'}</span>
+      <span className="picker-trigger-model">{modelLabel}</span>
       <ChevronDown size={15} className="picker-chevron" />
     </button>
   )
@@ -216,6 +224,22 @@ export default function ModelPicker({ settings, onChange, big, onOpenSettings }:
               </div>
 
               <div className="picker-models" role="tabpanel">
+                {!loading && (
+                  <button
+                    type="button"
+                    className={`picker-model picker-auto ${isAuto ? 'active' : ''}`}
+                    onClick={() => pick('auto')}
+                  >
+                    <span className="picker-model-main">
+                      <Sparkles size={14} className="picker-auto-icon" />
+                      <span className="picker-model-name">Auto (smart default)</span>
+                    </span>
+                    <span className="picker-model-desc">
+                      Picks a good model automatically — vision-capable when you attach an image
+                    </span>
+                    {isAuto && <Check size={16} className="picker-model-check" />}
+                  </button>
+                )}
                 {loading && <p className="hint picker-loading">Loading models…</p>}
                 {!loading && visible.length === 0 && <p className="hint">No models found.</p>}
                 {!loading &&

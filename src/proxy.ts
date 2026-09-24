@@ -12,7 +12,17 @@ const sessionCookieName = (req: NextRequest): string =>
 
 // Guest-allowed paths: plain chatting (+ model/provider/health meta) and
 // history save/list. The chat SPA lives at "/".
-const GUEST_API_PREFIXES = ['/api/chat', '/api/models', '/api/providers', '/api/health', '/api/history']
+// In-chat image features (analyze via user's own keys in the body, generate via
+// free Pollinations / user keys) are part of the guest-accessible chat page.
+const GUEST_API_PREFIXES = [
+  '/api/chat',
+  '/api/models',
+  '/api/providers',
+  '/api/health',
+  '/api/history',
+  '/api/tools/image/analyze',
+  '/api/tools/image/generate',
+]
 
 function isGuestAllowed(request: NextRequest): boolean {
   const { pathname } = request.nextUrl

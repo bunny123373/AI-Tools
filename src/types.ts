@@ -1,6 +1,20 @@
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
+  /**
+   * Downscaled image attached to a user message (vision chat analysis).
+   * Kept in history so an opened conversation re-shows the attachment.
+   */
+  imageDataUrl?: string
+  /** Generated image (data URL) attached to an assistant message. */
+  image?: string
+  /** Caption / prompt shown under a generated image message. */
+  imageLabel?: string
+  /**
+   * Model that actually replied. Set when "Auto" resolved or the vision
+   * auto-switch kicked in for an image message.
+   */
+  usedModel?: string
 }
 
 export interface ProviderInfo {

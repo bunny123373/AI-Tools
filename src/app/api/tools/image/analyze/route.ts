@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     )
   }
   try {
-    const result = await analyzeImage({
+    const { result, model, autoSwitched } = await analyzeImage({
       provider: (body.provider as string) || 'ollama',
       model: (body.model as string) || '',
       imageDataUrl,
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       geminiKey: body.geminiKey ? String(body.geminiKey) : undefined,
       ollamaBaseUrl: body.ollamaBaseUrl ? String(body.ollamaBaseUrl) : undefined,
     })
-    return NextResponse.json({ result })
+    return NextResponse.json({ result, model, autoSwitched })
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Image analysis failed.' },

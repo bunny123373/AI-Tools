@@ -38,8 +38,6 @@ export default function App() {
   const [historyVersion, setHistoryVersion] = useState(0)
   // Programmatic open signal for the floating "all tools" panel.
   const [fabSignal, setFabSignal] = useState(0)
-  // Image handed over from chat's attach button → Images → Analyze.
-  const [imagePending, setImagePending] = useState<{ file: File; ts: number } | null>(null)
   // Mobile & tablet full-screen chat: slide-in chat-history drawer (opened by the left edge bar).
   const [historyOpen, setHistoryOpen] = useState(false)
   // The drawer is a mobile/tablet feature. Real hardware lies about `pointer`/
@@ -115,14 +113,7 @@ export default function App() {
 
   const moreTools = () => setFabSignal(Date.now())
 
-  const attachImage = (file: File) => {
-    const ts = Date.now()
-    setImagePending({ file, ts })
-    setTarget({ tab: 'images', imageMode: 'analyze', ts })
-    setTab('images')
-  }
-
-  const imagesKey = imagePending ? `images-${imagePending.ts}` : target?.tab === 'images' ? `images-${target.ts}` : 'images'
+  const imagesKey = target?.tab === 'images' ? `images-${target.ts}` : 'images'
 
   return (
     <div className={`app ${tab === 'chat' ? 'app-chat-mode' : ''}`}>
@@ -149,7 +140,6 @@ export default function App() {
                 initialId={activeChatId}
                 onHistoryChanged={handleHistoryChanged}
                 onOpenSettings={() => goTab('settings')}
-                onAttach={attachImage}
                 onGoTab={goTab}
               />
             )}
@@ -178,7 +168,6 @@ export default function App() {
                   <Images
                     key={imagesKey}
                     initialMode={target?.tab === 'images' ? target.imageMode : undefined}
-                    initialFile={imagePending?.file ?? null}
                   />
                 )}
                 {tab === 'prompts' && <Prompts onUse={usePrompt} />}

@@ -134,7 +134,7 @@ export const ytDownload = async (
 }
 
 export const analyzeImage = (payload: Record<string, unknown>) =>
-  api<{ result: string }>('/api/tools/image/analyze', {
+  api<{ result: string; model?: string; autoSwitched?: boolean }>('/api/tools/image/analyze', {
     method: 'POST',
     body: JSON.stringify(payload),
   })

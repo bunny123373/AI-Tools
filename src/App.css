@@ -1333,6 +1333,49 @@ label > span {
   border-top-left-radius: 4px;
 }
 
+/* In-chat images (vision attachments + generated results) */
+.msg-img {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  border-radius: 12px;
+  margin: 0 0 10px;
+  object-fit: contain;
+}
+.msg.assistant .msg-img {
+  background: var(--bg-1);
+}
+.msg-img-user {
+  margin-bottom: 10px;
+}
+.msg-img-wrap {
+  margin-bottom: 10px;
+}
+.msg-img-label {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-word;
+}
+.msg-img-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.msg-img-actions .ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.msg-model-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.85;
+}
+
 .msg-speak {
   align-self: flex-end;
   display: grid;
@@ -1623,6 +1666,82 @@ label > span {
 }
 .chat-page.welcome .composer-model-chip {
   display: none;
+}
+
+/* In-chat image attach chip — the image stays here, no tab jump */
+.composer-attach {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-2);
+  max-width: 100%;
+  position: relative;
+}
+.composer-attach img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex: none;
+}
+.composer-attach-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+.composer-attach-mode {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.composer-attach .icon-btn {
+  margin-left: auto;
+  flex: none;
+}
+
+/* Image-generation mode toggle (chat-only, ChatGPT-style) */
+.composer-icon.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.composer-gen {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 6px;
+}
+.gen-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gen-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.gen-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.gen-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
 }
 
 /* ~ Guest gate (signed-out, non-chat tabs) ~ */

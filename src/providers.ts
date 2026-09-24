@@ -46,6 +46,66 @@ export const PROVIDERS: ProviderInfo[] = [
   },
 ]
 
+/**
+ * Default models per provider — used by "Auto" mode and when the settings
+ * store has no model selected yet. `chat` = plain conversation default,
+ * `vision` = the model used when an image needs analysis and the current
+ * model can't see it (auto-switch).
+ */
+export const MODEL_DEFAULTS: Record<string, { chat: string; vision: string; visionLabel?: string }> = {
+  ollama: { chat: 'llama3.2', vision: 'llava', visionLabel: 'Llava (vision)' },
+  openrouter: {
+    chat: 'inclusionai/ling-3.0-flash-vl:free',
+    vision: 'inclusionai/ling-3.0-flash-vl:free',
+    visionLabel: 'Ling 3.0 Flash VL (free vision)',
+  },
+  xkiro: {
+    chat: 'qwen/qwen3.8-omni-flash:free',
+    vision: 'qwen/qwen3.8-omni-flash:free',
+    visionLabel: 'Qwen3.8 Omni Flash (free)',
+  },
+  gemini: { chat: 'gemini-3.5-flash', vision: 'gemini-3.5-flash' },
+  puter: { chat: 'gemini-3.5-flash-lite', vision: 'gemini-3.5-flash-lite' },
+}
+
+/** Does this provider+model combination accept images for analysis? */
+export function isVisionCapable(provider: string, model: string): boolean {
+  const id = (model || '').toLowerCase()
+  if (provider === 'ollama') {
+    return /(llava|moondream|bakllava|minicpm|vision)/.test(id)
+  }
+  // Gemini (and every Puter model) is multimodal — all models see images.
+  if (provider === 'gemini' || provider === 'puter') return true
+  // OpenAI-compatible gateways: any model marked vision/omni/vl/llava works.
+  return /(vision|omni|\bvl\b|llava|glm-4v|\bqwen.*vl\b)/.test(id)
+}
+
+/** Resolve "auto"/empty model names to a concrete chat model. */
+export function resolveChatModel(provider: string, model?: string): string {
+  const m = (model || '').trim()
+  if (!m || m === 'auto') return MODEL_DEFAULTS[provider]?.chat || m
+  return m
+}
+
+export interface ResolvedVisionModel {
+  model: string
+  /** True when the current model cannot see images and we swapped models. */
+  autoSwitched: boolean
+}
+
+/** Pick a vision-capable model for image analysis; auto-switch if needed. */
+export function resolveVisionModel(provider: string, model?: string): ResolvedVisionModel {
+  const cur = (model || '').trim()
+  const fallback = MODEL_DEFAULTS[provider]?.vision || cur
+  if (provider === 'gemini' || provider === 'puter') {
+    // Every model on these providers is multimodal — no switch needed.
+    return { model: resolveChatModel(provider, cur) || fallback, autoSwitched: false }
+  }
+  if (!cur || cur === 'auto') return { model: fallback, autoSwitched: false }
+  if (isVisionCapable(provider, cur)) return { model: cur, autoSwitched: false }
+  return { model: fallback, autoSwitched: true }
+}
+
 const STATIC_MODELS: Record<string, ModelChoice[]> = {
   ollama: [
     { id: 'llama3.2', name: 'Llama 3.2 (default)', provider: 'ollama' },
@@ -311,8 +371,10 @@ function toGeminiContents(messages: ChatMessage[]): { contents: any[]; system?: 
 }
 
 export async function chat(opts: ChatRequest): Promise<string> {
-  const { provider, model, messages, openrouterKey, geminiKey, xkiroKey } = opts
+  const { provider, messages, openrouterKey, geminiKey, xkiroKey } = opts
   const base = ollamaBase(opts)
+  // "auto" / empty model names resolve to the provider's default model.
+  const model = resolveChatModel(provider, opts.model)
 
   if (provider === 'ollama') {
     try {
@@ -417,12 +479,24 @@ export interface AnalyzeImageOpts {
   ollamaBaseUrl?: string
 }
 
-export async function analyzeImage(opts: AnalyzeImageOpts): Promise<string> {
-  const { provider, model, imageDataUrl, openrouterKey, geminiKey } = opts
+export interface AnalyzeImageResult {
+  result: string
+  /** The model that actually analyzed the image (after auto-switch). */
+  model: string
+  /** True when the selected model couldn't see images and we swapped. */
+  autoSwitched: boolean
+}
+
+export async function analyzeImage(opts: AnalyzeImageOpts): Promise<AnalyzeImageResult> {
+  const { provider, imageDataUrl, openrouterKey, geminiKey } = opts
   const base = ollamaBase(opts)
   const prompt = opts.prompt?.trim() || 'Describe this image in detail.'
   const b64 = imageDataUrl.split(',')[1] || ''
   if (!b64) throw new Error('Invalid image data URL.')
+
+  // Auto-detect a vision-capable model: keep the user's model when it can see
+  // images, otherwise switch to the provider's vision default.
+  const { model, autoSwitched } = resolveVisionModel(provider, opts.model)
 
   if (provider === 'ollama') {
     try {
@@ -437,7 +511,7 @@ export async function analyzeImage(opts: AnalyzeImageOpts): Promise<string> {
       })
       const reply = data?.message?.content
       if (!reply) throw new Error('Ollama returned an empty reply.')
-      return reply
+      return { result: reply, model, autoSwitched }
     } catch (e) {
       throw new Error(
         friendlyError(
@@ -470,7 +544,7 @@ export async function analyzeImage(opts: AnalyzeImageOpts): Promise<string> {
       })
       const reply = data?.choices?.[0]?.message?.content
       if (!reply) throw new Error('OpenRouter returned an empty reply.')
-      return reply
+      return { result: reply, model, autoSwitched }
     } catch (e) {
       if (e instanceof Error && e.message.toLowerCase().includes('no free')) {
         throw new Error('The selected free model is currently rate-limited on OpenRouter. Try another free model.')
@@ -504,7 +578,7 @@ export async function analyzeImage(opts: AnalyzeImageOpts): Promise<string> {
       )
       const reply = data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('')
       if (!reply) throw new Error('Gemini returned an empty reply.')
-      return reply
+      return { result: reply, model, autoSwitched }
     } catch (e) {
       throw e
     }
@@ -517,7 +591,7 @@ export async function analyzeImage(opts: AnalyzeImageOpts): Promise<string> {
       const response = await puter.ai.chat(prompt, imageDataUrl, { model, normalize: true })
       const reply = response?.message?.content
       if (!reply) throw new Error('Puter returned an empty reply.')
-      return typeof reply === 'string' ? reply : JSON.stringify(reply)
+      return { result: typeof reply === 'string' ? reply : JSON.stringify(reply), model, autoSwitched }
     } catch (e) {
       throw new Error(puterFriendlyError(e))
     }

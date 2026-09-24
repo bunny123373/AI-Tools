@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Bot, Globe, MessageSquarePlus, Mic, MicOff, Paperclip, Send, Sparkles, Volume2, VolumeX, ImageIcon, Wrench, Bookmark } from 'lucide-react'
+import { Bot, Download, Globe, ImageIcon, MessageSquarePlus, Mic, MicOff, Paperclip, Send, Sparkles, Volume2, VolumeX, X } from 'lucide-react'
 import type { Tab } from '../components/TopBar'
 import type { ChatMessage, SearchSource, Settings } from '../types'
-import { createChat, getChat, loadSettings, saveChat, saveSettings, sendChat } from '../api'
+import { analyzeImage, createChat, generateImageInfo, getChat, loadSettings, saveChat, saveSettings, sendChat } from '../api'
 import { speak, startVoiceInput, stopSpeaking, sttSupported, ttsSupported } from '../lib/speech'
+import { downscaleToDataUrl } from '../utils/image'
 import ModelPicker from '../components/ModelPicker'
 import HeroBanner from '../components/HeroBanner'
 import { SUGGESTIONS } from '../registry'
@@ -17,14 +18,19 @@ interface Props {
   /** Fired after any create/save so the sidebar can refresh its list. */
   onHistoryChanged?: () => void
   onOpenSettings?: () => void
-  onAttach?: (file: File) => void
-  onOpenSettings?: () => void
-  onAttach?: (file: File) => void
   /** Jump to another tab from the welcome quick-nav grid. */
   onGoTab?: (tab: Tab) => void
 }
 
-export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings, onAttach }: Props) {
+const GEN_SIZES: Record<string, [number, number]> = {
+  '1:1': [1024, 1024],
+  '16:9': [1280, 720],
+  '9:16': [720, 1280],
+  '3:2': [1152, 768],
+  '2:3': [768, 1152],
+}
+
+export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings }: Props) {
   // App settings (provider, model, temperature…) persisted to localStorage.
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -34,6 +40,11 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
   const [showSystem, setShowSystem] = useState(false)
   const [system, setSystem] = useState('You are a helpful, honest assistant.')
   const [web, setWeb] = useState<'off' | 'on'>('on')
+  // Image attached to the next message — stays in the chat, never jumps tabs.
+  const [attach, setAttach] = useState<{ dataUrl: string; name: string } | null>(null)
+  // Composer switched to image-generation mode (like ChatGPT's image toggle).
+  const [genMode, setGenMode] = useState(false)
+  const [genAspect, setGenAspect] = useState('1:1')
   // Id of the conversation currently being edited (null = brand-new chat).
   const [convId, setConvId] = useState<string | null>(initialId ?? null)
   const [loadingChat, setLoadingChat] = useState(!!initialId)
@@ -44,6 +55,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
   const micBaseRef = useRef('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const attachRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (seed) setInput(seed.prompt)
@@ -95,17 +107,34 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
     }
   }
 
+  const pickImage = async (f: File | undefined) => {
+    if (!f) return
+    try {
+      // Downscale now (also what the vision API needs) — keeps history light.
+      const dataUrl = await downscaleToDataUrl(f, 1280, 0.85)
+      setGenMode(false)
+      setAttach({ dataUrl, name: f.name })
+    } catch {
+      setAttach(null)
+    }
+  }
+
   const send = async () => {
     const text = input.trim()
-    if (!text || busy || loadingChat) return
+    const hasAttach = !!attach
+    if ((!text && !hasAttach) || busy || loadingChat) return
     // Cancel any in-progress voice input before sending.
     recognitionStopRef.current?.()
     recognitionStopRef.current = null
     setListening(false)
-    const userMsg: ChatMessage = { role: 'user', content: text }
+    const userMsg: ChatMessage = hasAttach
+      ? { role: 'user', content: text || 'Analyze this image.', imageDataUrl: attach!.dataUrl }
+      : { role: 'user', content: text }
     const next = [...messages, userMsg]
     setMessages(next)
     setInput('')
+    const attachSnapshot = attach
+    setAttach(null)
     setBusy(true)
 
     let id = convId
@@ -113,7 +142,10 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
     // user message survives even if the reply is interrupted.
     if (!id) {
       try {
-        const created = await createChat({ title: text, messages: [userMsg] })
+        const created = await createChat({
+          title: text || (hasAttach ? 'Image chat' : 'New chat'),
+          messages: [userMsg],
+        })
         id = created.chat.id
         setConvId(id)
         onHistoryChanged?.()
@@ -124,29 +156,66 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
       await persist(id, next)
     }
 
-    try {
-      const { reply, sources } = await sendChat({
-        provider: settings.provider,
-        model: settings.model,
-        messages: showSystem && system.trim() ? [{ role: 'system', content: system }, ...next] : next,
-        web: web === 'on',
-        openrouterKey: settings.openrouterKey || undefined,
-        geminiKey: settings.geminiKey || undefined,
-        xkiroKey: settings.xkiroKey || undefined,
-        webSearchKey: settings.webSearchKey || undefined,
-        ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
-      })
-      const final: ChatMessage[] = [...next, { role: 'assistant', content: reply }]
+    const finish = async (final: ChatMessage[]) => {
       setMessages(final)
-      setSourcesMap((prev) => ({ ...prev, [next.length]: sources ?? [] }))
       await persist(id, final)
+    }
+
+    try {
+      if (genMode) {
+        // ---- In-chat image generation ----
+        const isGem = settings.provider === 'gemini'
+        const isPut = settings.provider === 'puter'
+        const engine = (isGem ? 'gemini' : isPut ? 'puter' : 'pollinations') as 'gemini' | 'pollinations' | 'puter'
+        const [w, h] = GEN_SIZES[genAspect] || GEN_SIZES['1:1']
+        const { blob, usedModel } = await generateImageInfo({
+          prompt: text,
+          width: w,
+          height: h,
+          seed: Math.floor(Math.random() * 1_000_000_000),
+          model: isGem || isPut ? 'gemini-3.1-flash-image' : 'flux',
+          provider: engine,
+          geminiKey: isGem ? settings.geminiKey || undefined : undefined,
+        })
+        // Convert to a compact JPEG data URL so the image survives in history.
+        const image = await downscaleToDataUrl(blob, 1024, 0.85)
+        await finish([...next, { role: 'assistant', content: '', image, imageLabel: text, usedModel }])
+      } else if (hasAttach && attachSnapshot) {
+        // ---- Vision analysis (stays in the chat thread) ----
+        const res = await analyzeImage({
+          provider: settings.provider,
+          model: settings.model,
+          imageDataUrl: attachSnapshot.dataUrl,
+          prompt: text || undefined,
+          openrouterKey: settings.openrouterKey || undefined,
+          geminiKey: settings.geminiKey || undefined,
+          ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
+        })
+        const usedModel = res.autoSwitched ? `switched to ${res.model} (vision)` : res.model
+        await finish([...next, { role: 'assistant', content: res.result, usedModel }])
+      } else {
+        // ---- Plain chat ----
+        const { reply, sources } = await sendChat({
+          provider: settings.provider,
+          model: settings.model,
+          messages: showSystem && system.trim() ? [{ role: 'system', content: system }, ...next] : next,
+          web: web === 'on',
+          openrouterKey: settings.openrouterKey || undefined,
+          geminiKey: settings.geminiKey || undefined,
+          xkiroKey: settings.xkiroKey || undefined,
+          webSearchKey: settings.webSearchKey || undefined,
+          ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
+        })
+        const final: ChatMessage[] = [...next, { role: 'assistant', content: reply }]
+        setMessages(final)
+        setSourcesMap((prev) => ({ ...prev, [next.length]: sources ?? [] }))
+        await persist(id, final)
+      }
     } catch (e) {
-      const final: ChatMessage[] = [
+      await finish([
         ...next,
         { role: 'assistant', content: `Error: ${e instanceof Error ? e.message : 'Something went wrong.'}` },
-      ]
-      setMessages(final)
-      await persist(id, final)
+      ])
     } finally {
       setBusy(false)
     }
@@ -161,6 +230,8 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
     setMessages([])
     setSourcesMap({})
     setInput('')
+    setAttach(null)
+    setGenMode(false)
     setConvId(null)
   }
 
@@ -208,12 +279,6 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
 
   const welcome = !loadingChat && messages.length === 0
 
-  const attachRef = useRef<HTMLInputElement>(null)
-  const pickFile = (f: File | undefined) => {
-    if (!f || !onAttach) return
-    onAttach(f)
-  }
-
   const composer = (
     <div className="composer">
       {!welcome && (
@@ -221,26 +286,81 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
           <ModelPicker settings={settings} onChange={update} />
         </div>
       )}
+
+      {attach && (
+        <div className="composer-attach">
+          <img src={attach.dataUrl} alt="" />
+          <span className="composer-attach-name">{attach.name}</span>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Remove image"
+            title="Remove image"
+            onClick={() => setAttach(null)}
+          >
+            <X size={14} />
+          </button>
+          <span className="composer-attach-mode">will be analyzed in this chat</span>
+        </div>
+      )}
+
+      {genMode && (
+        <div className="composer-gen">
+          <div className="gen-chips" role="group" aria-label="Aspect ratio">
+            {Object.keys(GEN_SIZES).map((a) => (
+              <button
+                key={a}
+                type="button"
+                className={`gen-chip ${genAspect === a ? 'active' : ''}`}
+                onClick={() => setGenAspect(a)}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+          <p className="hint composer-note">
+            Image mode — powered by Gemini / Puter / Pollinations (free). The image appears right here in the chat.
+          </p>
+        </div>
+      )}
+
       <div className="composer-row">
+        {!genMode && (
+          <>
+            <button
+              type="button"
+              className="composer-icon"
+              title="Attach an image — analyze it right here in the chat"
+              aria-label="Attach image"
+              onClick={() => attachRef.current?.click()}
+            >
+              <Paperclip size={17} />
+            </button>
+            <input
+              ref={attachRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                void pickImage(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+          </>
+        )}
+
         <button
           type="button"
-          className="composer-icon"
-          title={onAttach ? 'Attach an image to analyze' : 'Attach'}
-          aria-label="Attach image"
-          onClick={() => attachRef.current?.click()}
-        >
-          <Paperclip size={17} />
-        </button>
-        <input
-          ref={attachRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => {
-            pickFile(e.target.files?.[0])
-            e.target.value = ''
+          className={`composer-icon ${genMode ? 'active' : ''}`}
+          title={genMode ? 'Back to text chat' : 'Generate an image — stays in the chat'}
+          aria-label={genMode ? 'Turn off image mode' : 'Turn on image mode'}
+          onClick={() => {
+            setGenMode((v) => !v)
+            setAttach(null)
           }}
-        />
+        >
+          <ImageIcon size={17} />
+        </button>
 
         {sttSupported && (
           <button
@@ -264,7 +384,13 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
               void send()
             }
           }}
-          placeholder="Ask anything… (Enter to send, Shift+Enter for a new line)"
+          placeholder={
+            genMode
+              ? 'Describe the image to create… (Enter to generate)'
+              : attach
+                ? 'Ask anything about this image… (Enter to send)'
+                : 'Ask anything… (Enter to send, Shift+Enter for a new line)'
+          }
           rows={2}
         />
 
@@ -281,12 +407,16 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
           </select>
         </div>
 
-        <button className="primary composer-send" onClick={() => void send()} disabled={busy || !input.trim()}>
-          <Send size={16} />
-          <span>Send</span>
+        <button
+          className="primary composer-send"
+          onClick={() => void send()}
+          disabled={busy || (!input.trim() && !attach)}
+        >
+          {genMode ? <Sparkles size={16} /> : <Send size={16} />}
+          <span>{genMode ? 'Generate' : 'Send'}</span>
         </button>
       </div>
-      {web === 'on' && (
+      {web === 'on' && !genMode && (
         <p className="hint composer-note">
           {settings.webSearchKey ? (
             <>Web search is on — fresh results are included with your message and cited in the reply.</>
@@ -314,7 +444,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
               <Sparkles size={26} />
             </div>
             <h2>How can I help you today?</h2>
-            <p>Ask a question, generate images, write code, or use any tool from the sidebar.</p>
+            <p>Ask a question, generate images, analyze photos, write code, or use any tool from the sidebar.</p>
             <div className="cw-suggestions">
               {SUGGESTIONS.map((s) => (
                 <button key={s.label} className="cw-suggestion" onClick={() => startPrompt(s.prompt)}>
@@ -356,13 +486,30 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
             {messages.map((m, i) => (
               <div key={i} className={`msg ${m.role}`}>
                 <div className="bubble">
+                  {m.role === 'user' && m.imageDataUrl && (
+                    <img className="msg-img msg-img-user" src={m.imageDataUrl} alt="Attached image" />
+                  )}
                   {m.role === 'assistant' ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                    <>
+                      {m.image && (
+                        <div className="msg-img-wrap">
+                          <img className="msg-img" src={m.image} alt={m.imageLabel || 'Generated image'} />
+                          {m.imageLabel && <p className="msg-img-label">{m.imageLabel}</p>}
+                          <div className="msg-img-actions">
+                            <a className="ghost" href={m.image} download={`generated-${i}.jpg`}>
+                              <Download size={14} /> Save image
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                      {m.content && <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>}
+                      {m.usedModel && <p className="msg-model-note">via {m.usedModel}</p>}
+                    </>
                   ) : (
                     <pre>{m.content}</pre>
                   )}
                 </div>
-                {m.role === 'assistant' && ttsSupported && (
+                {m.role === 'assistant' && m.content && ttsSupported && (
                   <button
                     className={`msg-speak ${speakingIdx === i ? 'speaking' : ''}`}
                     title={speakingIdx === i ? 'Stop reading' : 'Read aloud — free, in your browser'}
@@ -372,7 +519,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
                     {speakingIdx === i ? <VolumeX size={15} /> : <Volume2 size={15} />}
                   </button>
                 )}
-                {m.role === 'assistant' && (sourcesMap[i]?.length ?? 0) > 0 && (
+                {m.role === 'assistant' && !m.content && !m.image && (sourcesMap[i]?.length ?? 0) > 0 && (
                   <div className="msg-sources">
                     <span className="msg-sources-label">Sources</span>
                     <ul>

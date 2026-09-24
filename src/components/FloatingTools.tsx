@@ -23,12 +23,13 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import type { ToolKind } from '../types'
+import type { ToolKind, YtMode } from '../types'
 
 export type FloatingTarget = {
   tab: 'chat' | 'tools' | 'images' | 'prompts' | 'ui' | 'settings'
   tool?: ToolKind
   pdf?: 'word' | 'text' | 'images' | 'merge' | 'split'
+  yt?: YtMode
   imageMode?: 'generate' | 'analyze' | 'ocr' | 'convert' | 'palette' | 'removebg'
 }
 

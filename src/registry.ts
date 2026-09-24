@@ -35,6 +35,12 @@ export const TOOL_INDEX: ToolEntry[] = [
   { label: 'Convert Image', hint: 'Resize, rotate, format', target: { tab: 'images', imageMode: 'convert' } },
   { label: 'Palette', hint: 'Extract colors', target: { tab: 'images', imageMode: 'palette' } },
   { label: 'Remove BG', hint: 'Local background removal', target: { tab: 'images', imageMode: 'removebg' } },
+  { label: 'YouTube tools', hint: 'Info, transcript, titles, playlist, download', target: { tab: 'tools', tool: 'youtube' } },
+  { label: 'YouTube: Video info', hint: 'Title, channel, thumbnail, duration', target: { tab: 'tools', tool: 'youtube', yt: 'info' } },
+  { label: 'YouTube: Transcript', hint: 'Pull captions from a video', target: { tab: 'tools', tool: 'youtube', yt: 'transcript' } },
+  { label: 'YouTube: Title pack', hint: 'AI titles, description & tags', target: { tab: 'tools', tool: 'youtube', yt: 'title' } },
+  { label: 'YouTube: Playlist total', hint: 'Total runtime of a list of videos', target: { tab: 'tools', tool: 'youtube', yt: 'playlist' } },
+  { label: 'YouTube: Download', hint: 'Save video (MP4) or audio (M4A)', target: { tab: 'tools', tool: 'youtube', yt: 'download' } },
 ]
 
 /** Chat welcome — four suggestion cards. */

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Check, CheckCheck, Copy, FileDown, FileText, Languages, PenLine } from 'lucide-react'
-import type { Settings, ToolKind } from '../types'
+import { Check, CheckCheck, Copy, FileDown, FileText, Languages, MonitorPlay, PenLine } from 'lucide-react'
+import type { Settings, ToolKind, YtMode } from '../types'
 import { loadSettings, runTool, saveSettings } from '../api'
 import ModelPicker from '../components/ModelPicker'
 import PdfTools from '../components/PdfTools'
+import YoutubeTools from '../components/YoutubeTools'
 import { AUTO_LANGUAGE, LANGUAGES, POPULAR_LANGUAGES } from '../languages'
 
 const STYLES = ['professional', 'friendly', 'concise', 'casual', 'formal']
@@ -15,9 +16,11 @@ type PdfToolMode = 'word' | 'text' | 'images' | 'merge' | 'split'
 export default function Tools({
   initialKind,
   initialPdfMode,
+  initialYtMode,
 }: {
   initialKind?: ToolKind
   initialPdfMode?: PdfToolMode
+  initialYtMode?: YtMode
 }) {
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
   const [kind, setKind] = useState<ToolKind>(initialKind ?? 'summarize')
@@ -72,6 +75,7 @@ export default function Tools({
             ['translate', 'Translate'],
             ['proofread', 'Proofread'],
             ['pdf', 'PDF'],
+            ['youtube', 'YouTube'],
           ] as [ToolKind, string][]
         ).map(([k, label]) => (
           <button
@@ -88,6 +92,7 @@ export default function Tools({
             {k === 'translate' && <Languages size={16} />}
             {k === 'proofread' && <CheckCheck size={16} />}
             {k === 'pdf' && <FileDown size={16} />}
+            {k === 'youtube' && <MonitorPlay size={16} />}
             <span>{label}</span>
           </button>
         ))}
@@ -96,6 +101,8 @@ export default function Tools({
       <div className="tool-body">
         {kind === 'pdf' ? (
           <PdfTools initialMode={initialPdfMode} />
+        ) : kind === 'youtube' ? (
+          <YoutubeTools settings={settings} initialMode={initialYtMode} />
         ) : (
           <>
             <textarea

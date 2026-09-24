@@ -1,4 +1,4 @@
-import type { ChatPayload, HistoryChat, HistorySummary, ModelListResult, ProviderInfo, SearchSource, Settings, ToolKind } from './types'
+import type { ChatPayload, HistoryChat, HistorySummary, ModelListResult, ProviderInfo, SearchSource, Settings, ToolKind, YtDurationItem, YouTubeInfo } from './types'
 
 const SETTINGS_KEY = 'ai-toolbox-settings'
 
@@ -62,6 +62,32 @@ export const runTool = (kind: ToolKind, payload: Record<string, unknown>) =>
     method: 'POST',
     body: JSON.stringify(payload),
   })
+
+// ---- YouTube tools ----
+
+export const ytInfo = (url: string) =>
+  api<YouTubeInfo>('/api/tools/youtube/info', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  })
+
+export const ytTranscript = (url: string) =>
+  api<{ transcript: string; lang: string; label: string }>('/api/tools/youtube/transcript', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  })
+
+export const ytTitle = (payload: Record<string, unknown>) =>
+  api<{ result: string; info: YouTubeInfo }>('/api/tools/youtube/title', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+
+export const ytDuration = (urls: string) =>
+  api<{ items: YtDurationItem[]; totalSec: number; totalLabel: string; truncated: boolean }>(
+    '/api/tools/youtube/duration',
+    { method: 'POST', body: JSON.stringify({ urls }) },
+  )
 
 export const analyzeImage = (payload: Record<string, unknown>) =>
   api<{ result: string }>('/api/tools/image/analyze', {

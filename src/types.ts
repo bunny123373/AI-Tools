@@ -59,7 +59,29 @@ export interface SearchSource {
   snippet: string
 }
 
-export type ToolKind = 'summarize' | 'improve' | 'translate' | 'proofread' | 'pdf'
+export type ToolKind = 'summarize' | 'improve' | 'translate' | 'proofread' | 'pdf' | 'youtube'
+
+/** YouTube tools sub-modes (inside the Tools tab). */
+export type YtMode = 'info' | 'transcript' | 'title' | 'playlist' | 'download'
+
+/** Video metadata returned by /api/tools/youtube/info. */
+export interface YouTubeInfo {
+  id: string
+  url: string
+  title: string
+  author: string
+  thumbnail: string
+  durationSec: number | null
+}
+
+/** One playlist row from /api/tools/youtube/duration. */
+export interface YtDurationItem {
+  url: string
+  id: string | null
+  title?: string
+  durationSec: number | null
+  error?: string
+}
 
 export interface HistorySummary {
   id: string

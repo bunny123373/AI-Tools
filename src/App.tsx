@@ -171,6 +171,7 @@ export default function App() {
                     key={target && target.tab === 'tools' ? `tools-${target.ts}` : 'tools'}
                     initialKind={target?.tab === 'tools' ? target.tool : undefined}
                     initialPdfMode={target?.tab === 'tools' ? target.pdf : undefined}
+                    initialYtMode={target?.tab === 'tools' ? target.yt : undefined}
                   />
                 )}
                 {tab === 'images' && (

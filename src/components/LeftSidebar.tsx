@@ -84,102 +84,105 @@ export default function LeftSidebar({ active, onNav, onNewChat, onSeed, activeCh
 
   return (
     <aside className="left-sidebar">
-      <button className="new-chat" onClick={onNewChat}>
-        <Plus size={17} />
-        <span>New Chat</span>
-      </button>
-
-      <div className="sb-section">
-        <div className="sb-label">Navigate</div>
-        <nav className="sb-nav">
-          {NAV.map((n) => {
-            const Icon = n.icon
-            const isActive = active === n.tab
-            return (
-              <button
-                key={n.label}
-                className={`sb-link ${isActive ? 'active' : ''}`}
-                onClick={() => onNav(n.tab)}
-              >
-                <Icon size={16} />
-                <span>{n.label}</span>
-              </button>
-            )
-          })}
-        </nav>
+      {/* Slim icon rail: navigation only */}
+      <div className="sb-rail">
+        {NAV.map((n) => {
+          const Icon = n.icon
+          const isActive = active === n.tab
+          return (
+            <button
+              key={n.label}
+              type="button"
+              className={`sb-rail-link ${isActive ? 'active' : ''}`}
+              title={n.label}
+              aria-label={n.label}
+              onClick={() => onNav(n.tab)}
+            >
+              <Icon size={18} />
+            </button>
+          )
+        })}
       </div>
 
-      <div className="sb-section recent">
-        <div className="sb-label">Chat history</div>
-        <div className="sb-recent">
-          {chats.length > 0 ? (
-            chats.map((c) => (
-              <div key={c.id} className={`recent-row ${c.id === activeChatId ? 'active' : ''}`}>
-                <button
-                  className="sb-link recent-item"
-                  title={c.title}
-                  onClick={() => onOpenChat?.(c.id)}
-                >
-                  <MessageSquare size={14} />
-                  <span className="recent-title">{c.title}</span>
-                </button>
-                <button
-                  className="recent-del"
-                  title="Delete chat"
-                  aria-label={`Delete chat: ${c.title}`}
-                  onClick={() => void removeChat(c.id)}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))
-          ) : (
-            <>
-              {!loading && (
-                <p className="sb-hint">
-                  No saved chats yet — conversations appear here as you chat.
-                </p>
-              )}
-              {RECENT_CHATS.map((r) => (
-                <button key={r.label} className="sb-link recent-item" onClick={() => onSeed(r.prompt)}>
-                  <MessageSquare size={14} />
-                  <span>{r.label}</span>
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="sb-foot">
-        <div className="profile-card">
-          <div className="avatar avatar-lg">{initials}</div>
-          <div className="profile-meta">
-            <strong>{session?.user?.name?.trim() || 'Guest'}</strong>
-            <span>{session?.user?.email || 'Not signed in'}</span>
-          </div>
-          <button
-            className="profile-signout"
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            title="Sign out"
-            aria-label="Sign out"
-          >
-            <LogOut size={14} />
-          </button>
-        </div>
-
-        <button className="provider-card" onClick={() => onNav('settings')} title="Open settings">
-          <span className="status-dot" />
-          <div className="provider-meta">
-            <strong>{providerLabel}</strong>
-            <span>{settings.model || 'No model selected'}</span>
-          </div>
-          <Settings size={14} />
+      {/* Wider panel: new chat, history, account + model */}
+      <div className="sb-main">
+        <button className="new-chat" onClick={onNewChat}>
+          <Plus size={17} />
+          <span>New Chat</span>
         </button>
 
-        <div className="sb-offline">
-          <Sparkles size={13} />
-          <span>Runs fully local with Ollama — no internet needed.</span>
+        <div className="sb-section recent">
+          <div className="sb-label">Chat history</div>
+          <div className="sb-recent">
+            {chats.length > 0 ? (
+              chats.map((c) => (
+                <div key={c.id} className={`recent-row ${c.id === activeChatId ? 'active' : ''}`}>
+                  <button
+                    className="sb-link recent-item"
+                    title={c.title}
+                    onClick={() => onOpenChat?.(c.id)}
+                  >
+                    <MessageSquare size={14} />
+                    <span className="recent-title">{c.title}</span>
+                  </button>
+                  <button
+                    className="recent-del"
+                    title="Delete chat"
+                    aria-label={`Delete chat: ${c.title}`}
+                    onClick={() => void removeChat(c.id)}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <>
+                {!loading && (
+                  <p className="sb-hint">
+                    No saved chats yet — conversations appear here as you chat.
+                  </p>
+                )}
+                {RECENT_CHATS.map((r) => (
+                  <button key={r.label} className="sb-link recent-item" onClick={() => onSeed(r.prompt)}>
+                    <MessageSquare size={14} />
+                    <span>{r.label}</span>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="sb-foot">
+          <div className="profile-card">
+            <div className="avatar avatar-lg">{initials}</div>
+            <div className="profile-meta">
+              <strong>{session?.user?.name?.trim() || 'Guest'}</strong>
+              <span>{session?.user?.email || 'Not signed in'}</span>
+            </div>
+            <button
+              className="profile-signout"
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+
+          <button className="provider-card" onClick={() => onNav('settings')} title="Open settings">
+            <span className="status-dot" />
+            <div className="provider-meta">
+              <strong>{providerLabel}</strong>
+              <span>{settings.model || 'No model selected'}</span>
+            </div>
+            <Settings size={14} />
+          </button>
+
+          <div className="sb-offline">
+            <Sparkles size={13} />
+            <span>Runs fully local with Ollama — no internet needed.</span>
+          </div>
         </div>
       </div>
     </aside>

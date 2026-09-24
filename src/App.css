@@ -47,7 +47,7 @@
   --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --mono: 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
   --radius: 14px;
-  --sb-w: 268px;
+  --sb-w: 304px;
   --rail-w: 312px;
 }
 
@@ -411,18 +411,79 @@ code {
   font-size: 0.85rem;
 }
 
-/* ~ Left sidebar ~ */
+/* ~ Left sidebar: slim icon rail + content panel ~ */
 .left-sidebar {
   border-right: 1px solid var(--border);
   background: linear-gradient(180deg, var(--panel-bg), color-mix(in srgb, var(--panel-bg) 55%, var(--bg)));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  padding: 16px 14px;
+  padding: 16px 14px 16px 12px;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ---- Icon rail (navigation only) ---- */
+.sb-rail {
+  flex: none;
+  width: 52px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  overflow-y: auto;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+  padding-right: 11px;
+  border-right: 1px solid var(--border);
+}
+
+.sb-rail-link {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sb-rail-link:hover {
+  color: var(--text);
+  background: var(--bg-2);
+  border-color: var(--border);
+}
+
+.sb-rail-link.active {
+  color: var(--green);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* ---- Content panel (new chat, history, account/model) ---- */
+.sb-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   min-height: 0;
+}
+
+.sb-main .sb-section.recent {
+  flex: 1;
+  min-height: 0;
+}
+
+.sb-main .sb-recent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .new-chat {
@@ -467,7 +528,6 @@ code {
   color: var(--muted);
 }
 
-.sb-nav,
 .sb-recent {
   display: flex;
   flex-direction: column;

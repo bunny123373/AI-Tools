@@ -1,0 +1,12 @@
+/* Global base styles — App.css holds the app styling. */
+html {
+  color-scheme: dark;
+}
+
+[data-theme='light-clean'] {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+}

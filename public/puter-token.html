@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Puter token — AI Toolbox</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#05090a;color:#e6f0ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:16px}
+  .card{background:#0c1417;border:1px solid #1b2a2e;border-radius:16px;padding:28px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  h1{font-size:20px;margin:0 0 6px;color:#7cff9b}
+  p{line-height:1.55;font-size:14px;color:#9fb4b0;margin:8px 0}
+  code{background:#122;padding:1px 6px;border-radius:6px;color:#7cff9b;font-size:13px}
+  button{background:#7cff9b;color:#05090a;border:0;border-radius:10px;padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer;margin-top:14px}
+  button:disabled{opacity:.5;cursor:default}
+  textarea{width:100%;box-sizing:border-box;margin-top:12px;background:#081012;color:#b8ffe9;border:1px solid #1b2a2e;border-radius:10px;padding:10px;font-family:monospace;font-size:12px;min-height:90px;resize:vertical}
+  .ok{color:#7cff9b;font-weight:600}
+  .err{color:#ff7c7c}
+  .steps{margin:10px 0 0;padding:0;list-style:none}
+  .steps li{margin:6px 0;font-size:13.5px}
+  .steps b{color:#e6f0ee}
+</style>
+</head>
+<body>
+<script src="https://js.puter.com/v2/"></script>
+<div class="card">
+  <h1>One-time Puter token</h1>
+  <p>Puter is a free AI service (ai.google-free style, via puter.com) with a monthly allowance and 1000+ models. This app uses it <b>server-side</b>, so it needs a one-time token from your Puter account.</p>
+  <ol class="steps">
+    <li><b>1.</b> Click <b>Get my token</b> below — Puter opens its sign-in popup (it may be blocked; allow popups for this page).</li>
+    <li><b>2.</b> In the popup, sign in, create a free account, or continue as guest, and approve the app.</li>
+    <li><b>3.</b> Copy the token below and paste it into <code>.env.local</code> as <code>PUTER_AUTH_TOKEN=…</code>, then restart the server.</li>
+  </ol>
+  <p class="ok" id="status">Ready.</p>
+  <button id="btn" type="button">Get my token</button>
+  <textarea id="tok" readonly placeholder="Your token will appear here."></textarea>
+  <button id="copy" type="button" disabled>Copy token</button>
+</div>
+<script>
+  const status = document.getElementById('status')
+  const btn = document.getElementById('btn')
+  const tok = document.getElementById('tok')
+  const copy = document.getElementById('copy')
+
+  async function getToken() {
+    status.textContent = 'Opening Puter sign-in…'
+    status.className = 'ok'
+    btn.disabled = true
+    try {
+      // Forces the Puter auth popup, then reads the stored token.
+      await puter.ai.listModels()
+      const t = puter.authToken || ''
+      if (!t) throw new Error('No token after sign-in — try again.')
+      // Validate it's a real API token before offering it.
+      let user = null
+      try { user = await puter.auth.getUser() } catch { user = null }
+      if (!user || user.error) {
+        throw new Error('Puter rejected that token (copied from puter.com itself? Use the popup instead).')
+      }
+      tok.value = t
+      copy.disabled = false
+      status.textContent = '✓ API token validated — paste it into .env.local as PUTER_AUTH_TOKEN=' + t.slice(0, 8) + '…'
+    } catch (e) {
+      status.textContent = 'Sign-in failed or was cancelled: ' + String((e && e.message) || e).slice(0, 160)
+      status.className = 'err'
+    } finally {
+      btn.disabled = false
+    }
+  }
+
+  btn.addEventListener('click', getToken)
+  copy.addEventListener('click', () => {
+    tok.select()
+    navigator.clipboard?.writeText(tok.value).catch(() => {})
+    copy.textContent = 'Copied!'
+    setTimeout(() => (copy.textContent = 'Copy token'), 1500)
+  })
+  if (typeof puter !== 'undefined' && puter.authToken) {
+    tok.value = puter.authToken
+    copy.disabled = false
+    status.textContent = '✓ Token already stored in this browser.'
+  }
+</script>
+</body>
+</html>

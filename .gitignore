@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+# Next.js build output
+.next/
+out/
+# Legacy build output
+dist/
+# Env files
+.env
+.env.local
+*.env.local
+server/.env
+# Logs
+*.log
+npm-debug.log*
+# Local auth user store (file-backed, no database)
+.data/
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+# Local app data (chats, users)

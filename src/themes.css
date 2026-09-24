@@ -1,0 +1,241 @@
+/* ============================================================
+   UI themes — each theme overrides the CSS variables from
+   App.css. data-theme is set on <html> by theme.ts.
+   ============================================================ */
+
+/* ~~~~~~~~~~~~~~~~~~ ☀️ LIGHT CLEAN ~~~~~~~~~~~~~~~~~~ */
+[data-theme='light-clean'] {
+  --bg: #f5f7fb;
+  --bg-2: #ffffff;
+  --bg-3: #eef1f6;
+  --panel-bg: rgba(255, 255, 255, 0.66);
+  --border: #e2e7f0;
+  --text: #16202f;
+  --muted: #64748b;
+  --accent: #2563eb;
+  --accent-2: #4f46e5;
+  --accent-contrast: #ffffff;
+  --green: #059669;
+  --red: #dc2626;
+  --warn: #b45309;
+  --topbar-bg: rgba(255, 255, 255, 0.92);
+  --tag-bg: #eef2ff;
+  --tag-color: #4338ca;
+  --tag-border: #c7d2fe;
+  --code-bg: #f1f5f9;
+  --code-border: #e2e8f0;
+  --code-color: #0f172a;
+  --badge-bg: #ecfdf5;
+  --badge-border: #a7f3d0;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 6px 16px rgba(16, 24, 40, 0.06);
+  --radius: 10px;
+}
+
+[data-theme='light-clean'] body {
+  background:
+    radial-gradient(900px 350px at 50% -10%, #eef2ff, transparent 60%),
+    #f5f7fb;
+  color: var(--text);
+}
+
+[data-theme='light-clean'] ::selection {
+  background: #c7d2fe;
+}
+
+[data-theme='light-clean'] .card,
+[data-theme='light-clean'] .picker,
+[data-theme='light-clean'] .prompt-card,
+[data-theme='light-clean'] .prompt-form,
+[data-theme='light-clean'] .result {
+  box-shadow: var(--shadow);
+}
+
+[data-theme='light-clean'] code {
+  color: var(--code-color);
+}
+
+/* ~~~~~~~~~~~~~~~~~~ ⚡ CYBER NEON ~~~~~~~~~~~~~~~~~~ */
+[data-theme='cyber-neon'] {
+  --bg: #05070c;
+  --bg-2: #0b1018;
+  --bg-3: #111826;
+  --border: #1b2c3d;
+  --text: #d9fbff;
+  --muted: #7fb4c4;
+  --accent: #00ffe1;
+  --accent-2: #ff2fb9;
+  --accent-contrast: #04121a;
+  --green: #3dffb0;
+  --red: #ff4d6d;
+  --warn: #ffe14d;
+  --topbar-bg: rgba(5, 7, 12, 0.9);
+  --tag-bg: rgba(0, 255, 225, 0.1);
+  --tag-color: #00ffe1;
+  --tag-border: rgba(0, 255, 225, 0.35);
+  --code-bg: #0b1018;
+  --code-border: #1b2c3d;
+  --code-color: inherit;
+  --badge-bg: rgba(0, 255, 225, 0.08);
+  --badge-border: rgba(0, 255, 225, 0.35);
+  --shadow: 0 0 18px rgba(0, 255, 225, 0.15);
+  --radius: 6px;
+}
+
+[data-theme='cyber-neon'] body {
+  background:
+    linear-gradient(rgba(0, 255, 225, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 225, 0.04) 1px, transparent 1px),
+    radial-gradient(1000px 500px at 50% -10%, rgba(0, 255, 225, 0.1), transparent 60%),
+    radial-gradient(800px 400px at 90% 110%, rgba(255, 47, 185, 0.09), transparent 55%),
+    #05070c;
+  background-size: 44px 44px, 44px 44px, auto, auto, auto;
+  color: var(--text);
+}
+
+[data-theme='cyber-neon'] .brand,
+[data-theme='cyber-neon'] h1,
+[data-theme='cyber-neon'] h2,
+[data-theme='cyber-neon'] h3 {
+  font-family: var(--mono);
+  letter-spacing: 0.05em;
+}
+
+[data-theme='cyber-neon'] button.primary {
+  box-shadow: 0 0 16px rgba(0, 255, 225, 0.45);
+}
+
+[data-theme='cyber-neon'] button.ghost:hover,
+[data-theme='cyber-neon'] input:focus,
+[data-theme='cyber-neon'] textarea:focus,
+[data-theme='cyber-neon'] select:focus {
+  box-shadow: 0 0 10px rgba(0, 255, 225, 0.35);
+}
+
+[data-theme='cyber-neon'] ::selection {
+  background: rgba(255, 47, 185, 0.5);
+}
+
+/* ~~~~~~~~~~~~~~~~~~ 🔮 GLASS VIBES ~~~~~~~~~~~~~~~~~~ */
+[data-theme='glass-vibes'] {
+  --bg: transparent;
+  --bg-2: rgba(255, 255, 255, 0.12);
+  --bg-3: rgba(255, 255, 255, 0.2);
+  --panel-bg: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.24);
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.78);
+  --accent: #67e8f9;
+  --accent-2: #a78bfa;
+  --accent-contrast: #0b1020;
+  --green: #6ee7b7;
+  --red: #fca5a5;
+  --warn: #fde68a;
+  --topbar-bg: rgba(255, 255, 255, 0.12);
+  --tag-bg: rgba(255, 255, 255, 0.16);
+  --tag-color: #e0f2fe;
+  --tag-border: rgba(255, 255, 255, 0.3);
+  --code-bg: rgba(255, 255, 255, 0.18);
+  --code-border: rgba(255, 255, 255, 0.25);
+  --code-color: inherit;
+  --badge-bg: rgba(255, 255, 255, 0.15);
+  --badge-border: rgba(255, 255, 255, 0.3);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --radius: 18px;
+}
+
+[data-theme='glass-vibes'] body {
+  background:
+    radial-gradient(900px 500px at 8% 12%, rgba(103, 232, 249, 0.45), transparent 55%),
+    radial-gradient(850px 500px at 92% 18%, rgba(167, 139, 250, 0.5), transparent 55%),
+    radial-gradient(900px 600px at 55% 95%, rgba(236, 72, 153, 0.45), transparent 55%),
+    linear-gradient(160deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+  background-attachment: fixed;
+  color: var(--text);
+}
+
+[data-theme='glass-vibes'] .topbar,
+[data-theme='glass-vibes'] .picker,
+[data-theme='glass-vibes'] .card,
+[data-theme='glass-vibes'] .prompt-card,
+[data-theme='glass-vibes'] .prompt-form,
+[data-theme='glass-vibes'] .result,
+[data-theme='glass-vibes'] .msg.assistant .bubble,
+[data-theme='glass-vibes'] .ui-card {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+[data-theme='glass-vibes'] input,
+[data-theme='glass-vibes'] textarea,
+[data-theme='glass-vibes'] select,
+[data-theme='glass-vibes'] .tool-tab,
+[data-theme='glass-vibes'] .system-input {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+[data-theme='glass-vibes'] button.ghost {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='glass-vibes'] ::selection {
+  background: rgba(167, 139, 250, 0.6);
+}
+
+/* ~~~~~~~~~~~~~~~~~~ 🟢 RETRO TERMINAL ~~~~~~~~~~~~~~~~~~ */
+[data-theme='retro-terminal'] {
+  --bg: #0a0d07;
+  --bg-2: #0e130a;
+  --bg-3: #131a0e;
+  --border: #24401f;
+  --text: #b9ff9a;
+  --muted: #6fae63;
+  --accent: #3dff70;
+  --accent-2: #b6ff3d;
+  --accent-contrast: #04140a;
+  --green: #3dff70;
+  --red: #ff5f56;
+  --warn: #ffd93d;
+  --topbar-bg: rgba(10, 13, 7, 0.94);
+  --tag-bg: rgba(61, 255, 112, 0.1);
+  --tag-color: #3dff70;
+  --tag-border: rgba(61, 255, 112, 0.35);
+  --code-bg: #0e130a;
+  --code-border: #24401f;
+  --code-color: inherit;
+  --badge-bg: rgba(61, 255, 112, 0.08);
+  --badge-border: rgba(61, 255, 112, 0.35);
+  --shadow: 0 0 14px rgba(61, 255, 112, 0.12);
+  --radius: 4px;
+  --font: Consolas, 'Cascadia Mono', 'Courier New', monospace;
+}
+
+[data-theme='retro-terminal'] body {
+  background:
+    repeating-linear-gradient(0deg, rgba(61, 255, 112, 0.05) 0 1px, transparent 1px 4px),
+    #0a0d07;
+  color: var(--text);
+}
+
+[data-theme='retro-terminal'] .brand::after {
+  content: ' ▊';
+  animation: blink-cursor 1s step-end infinite;
+}
+
+@keyframes blink-cursor {
+  50% {
+    opacity: 0;
+  }
+}
+
+[data-theme='retro-terminal'] .card,
+[data-theme='retro-terminal'] .picker,
+[data-theme='retro-terminal'] .prompt-card,
+[data-theme='retro-terminal'] .result,
+[data-theme='retro-terminal'] .msg.assistant .bubble {
+  box-shadow: var(--shadow);
+}
+
+[data-theme='retro-terminal'] ::selection {
+  background: rgba(61, 255, 112, 0.4);
+}

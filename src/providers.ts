@@ -1,0 +1,686 @@
+import type { ChatMessage, ChatRequest, ModelChoice, ModelListResult, ProviderInfo } from './types'
+
+export const OLLAMA_DEFAULT = 'http://localhost:11434'
+
+export const PROVIDERS: ProviderInfo[] = [
+  {
+    id: 'ollama',
+    name: 'Ollama (local)',
+    requiresKey: false,
+    keyLabel: '',
+    keyHint: 'Runs fully on your PC — free forever and offline. Install from https://ollama.com',
+    free: '100% free & offline',
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter (free models)',
+    requiresKey: true,
+    keyLabel: 'OpenRouter API key',
+    keyHint: 'Free key at https://openrouter.ai/keys — many free models cost $0',
+    free: 'Free models available',
+  },
+  {
+    id: 'gemini',
+    name: 'Google Gemini (free tier)',
+    requiresKey: true,
+    keyLabel: 'Gemini API key',
+    keyHint: 'Free key at https://aistudio.google.com/apikey — free tier included',
+    free: 'Has a free tier',
+  },
+  {
+    id: 'xkiro',
+    name: 'xkiro (free models)',
+    requiresKey: true,
+    keyLabel: 'xkiro API key',
+    keyHint: 'OpenAI-compatible gateway at https://api.xkiro.com/v1 — free models use the ":free" suffix.',
+    free: 'Free models available (:free)',
+  },
+  {
+    id: 'puter',
+    name: 'Puter (1000+ models · monthly allowance)',
+    requiresKey: false,
+    keyLabel: '',
+    keyHint:
+      'No key needed — one-time token via `npm run puter-token` (sign in on puter.com, approve). Free monthly allowance ≈ 1000 credits (≈$1): chat ≈ $0, images/video draw credits (Nano Banana ≈ $0.35/image, GPT Image 2 ≈ $0.03). Remaining allowance is shown when you pick Puter.',
+    free: 'Free monthly allowance (≈$1/month) — resets monthly',
+  },
+]
+
+const STATIC_MODELS: Record<string, ModelChoice[]> = {
+  ollama: [
+    { id: 'llama3.2', name: 'Llama 3.2 (default)', provider: 'ollama' },
+    { id: 'llama3.1', name: 'Llama 3.1', provider: 'ollama' },
+    { id: 'mistral', name: 'Mistral', provider: 'ollama' },
+    { id: 'phi3', name: 'Phi-3 Mini', provider: 'ollama' },
+    { id: 'gemma2', name: 'Gemma 2', provider: 'ollama' },
+    { id: 'qwen2.5', name: 'Qwen 2.5', provider: 'ollama' },
+    { id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'ollama' },
+    { id: 'llava', name: 'Llava (vision, for image analysis)', provider: 'ollama' },
+  ],
+  openrouter: [
+    { id: 'inclusionai/ling-3.0-flash-vl:free', name: 'Ling 3.0 Flash VL (free)', provider: 'openrouter', free: true },
+    { id: 'inclusionai/ling-3.0-flash-sante:free', name: 'Ling 3.0 Flash Sante (free)', provider: 'openrouter', free: true },
+    { id: 'inclusionai/ling-3.0-flash-fin:free', name: 'Ling 3.0 Flash Fin (free)', provider: 'openrouter', free: true },
+  ],
+  xkiro: [
+    { id: 'qwen/qwen3.8-omni-flash:free', name: 'Qwen3.8 Omni Flash (free)', provider: 'xkiro', free: true },
+    { id: 'qwen/qwen3.7-flash:free', name: 'Qwen3.7 Flash (free)', provider: 'xkiro', free: true },
+    { id: 'qwen/qwen3-max:free', name: 'Qwen3 Max (free)', provider: 'xkiro', free: true },
+    { id: 'minimax/minimax-m3:free', name: 'MiniMax M3 (free)', provider: 'xkiro', free: true },
+    { id: 'minimax/minimax-m2.7-highspeed:free', name: 'MiniMax M2.7 Highspeed (free)', provider: 'xkiro', free: true },
+    { id: 'mistralai/mistral-small-2603', name: 'Mistral Small 4 (free tier)', provider: 'xkiro', free: true },
+  ],
+  gemini: [
+    { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash (free tier)', provider: 'gemini', free: true },
+    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (free tier)', provider: 'gemini', free: true },
+    { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite (free tier)', provider: 'gemini', free: true },
+    { id: 'gemini-flash-latest', name: 'Gemini Flash Latest (free tier)', provider: 'gemini', free: true },
+    { id: 'gemini-flash-lite-latest', name: 'Gemini Flash-Lite Latest (free tier)', provider: 'gemini', free: true },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview (free tier)', provider: 'gemini', free: true },
+  ],
+  puter: [
+    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (fastest)', provider: 'puter', free: true },
+    { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', provider: 'puter', free: true },
+    { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', provider: 'puter', free: true },
+    { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite', provider: 'puter', free: true },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'puter', free: true },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'puter', free: true },
+    { id: 'gemma-4-26b-a4b-it', name: 'Gemma 4 26B (fast open model)', provider: 'puter', free: true },
+  ],
+}
+
+function friendlyError(e: unknown, fallback: string): string {
+  if (e instanceof Error && e.message) return e.message
+  return fallback
+}
+
+async function fetchJson(url: string, init?: RequestInit): Promise<any> {
+  const res = await fetch(url, init)
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const detail =
+      data?.error?.message || data?.error || data?.message || `HTTP ${res.status}`
+    throw new Error(String(detail))
+  }
+  return data
+}
+
+function ollamaBase(opts: Partial<ChatRequest> = {}): string {
+  return (opts.ollamaBaseUrl || process.env.OLLAMA_BASE_URL || OLLAMA_DEFAULT).replace(/\/$/, '')
+}
+
+// ---- Puter (https://puter.com) ----
+// Free AI with a monthly allowance and 1000+ models. The Node SDK needs a
+// one-time auth token (`npm run puter-token` → paste into PUTER_AUTH_TOKEN).
+// The SDK instance is cached so the (heavy) `vm` bootstrap runs only once.
+let puterInstance: any = null
+let puterTokenUsed = ''
+
+async function getPuter(): Promise<any> {
+  const token = process.env.PUTER_AUTH_TOKEN || ''
+  if (!token) {
+    throw new Error(
+      'Puter needs a one-time token. Run `npm run puter-token` (opens your browser, you sign in on puter.com), then paste the token into PUTER_AUTH_TOKEN in .env.local and restart the server.',
+    )
+  }
+  if (puterInstance && puterTokenUsed === token) return puterInstance
+  const mod: any = await import('@heyputer/puter.js/src/init.cjs')
+  const init = mod.init ?? mod.default?.init ?? mod.default
+  if (typeof init !== 'function') throw new Error('Puter SDK failed to initialize.')
+  puterInstance = init(token)
+  puterTokenUsed = token
+  return puterInstance
+}
+
+function puterFriendlyError(e: unknown): string {
+  // The SDK mostly rejects with plain objects like
+  // { error: { code, message } }, { error: 'text', message, code } or an Error.
+  // Unwrap before stringifying; `error` may be a string.
+  const anyE = e as any
+  const raw =
+    e instanceof Error
+      ? e.message
+      : typeof anyE?.error === 'string'
+        ? anyE.error
+        : anyE?.error?.message ??
+          anyE?.message ??
+          anyE?.error ??
+          anyE?.code ??
+          (typeof e === 'string' ? e : JSON.stringify(e ?? ''))
+  const msg = String(raw ?? '')
+  const lower = msg.toLowerCase()
+  if (lower.includes('unauthorized') || lower.includes('token_auth_failed')) {
+    return 'Puter rejected the token — run `npm run puter-token` again and update PUTER_AUTH_TOKEN in .env.local, then restart the server.'
+  }
+  if (lower.includes('insufficient')) {
+    return msg.length > 0 && msg.length < 220
+      ? `Puter free monthly allowance is too low for that request: ${msg}`
+      : 'Puter free monthly allowance is used up — it resets monthly, or top up at puter.com.'
+  }
+  if (lower.includes('too_many_requests') || lower.includes('rate limit')) {
+    return 'Puter rate-limited the request — wait a minute and try again.'
+  }
+  if (lower.includes('reauth_required')) {
+    return 'Puter token expired — re-run `npm run puter-token` and update PUTER_AUTH_TOKEN in .env.local.'
+  }
+  return msg || 'Puter request failed.'
+}
+
+export async function listModels(provider: string, opts: Partial<ChatRequest> = {}): Promise<ModelListResult> {
+  const base = ollamaBase(opts)
+
+  if (provider === 'ollama') {
+    try {
+      const data = await fetchJson(`${base}/api/tags`)
+      const models: ModelChoice[] = (data.models || []).map((m: any) => ({
+        id: m.name,
+        name: `${m.name}${m.details?.parameter_size ? ` (${m.details.parameter_size})` : ''}`,
+        provider: 'ollama',
+      }))
+      return { models: models.length ? models : STATIC_MODELS.ollama }
+    } catch (e) {
+      return {
+        models: STATIC_MODELS.ollama,
+        note: friendlyError(e, `Could not reach Ollama at ${base}. Start it with \`ollama serve\` and pull a model, e.g. \`ollama pull llama3.2\`.`),
+      }
+    }
+  }
+
+  if (provider === 'openrouter') {
+    const key = opts.openrouterKey || process.env.OPENROUTER_API_KEY || ''
+    if (!key) {
+      return {
+        models: STATIC_MODELS.openrouter,
+        note: 'Free models shown. Add your (free) OpenRouter key in Settings to load the full live list.',
+      }
+    }
+    try {
+      const data = await fetchJson('https://openrouter.ai/api/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      const models: ModelChoice[] = (data.data || [])
+        .filter((m: any) => typeof m.id === 'string')
+        .map((m: any) => ({
+          id: m.id,
+          name: m.name || m.id,
+          provider: 'openrouter',
+          free: m.id.includes(':free'),
+        }))
+        .sort((a: ModelChoice, b: ModelChoice) => Number(b.free) - Number(a.free))
+      return { models }
+    } catch (e) {
+      return { models: STATIC_MODELS.openrouter, note: friendlyError(e, 'Could not load OpenRouter models.') }
+    }
+  }
+
+  if (provider === 'xkiro') {
+    const key = opts.xkiroKey || process.env.XKIRO_API_KEY || ''
+    if (!key) {
+      return {
+        models: STATIC_MODELS.xkiro,
+        note: 'Free xkiro models shown. Add your xkiro key in Settings to load the full live list.',
+      }
+    }
+    try {
+      const data = await fetchJson('https://api.xkiro.com/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      const models: ModelChoice[] = (data.data || [])
+        .filter((m: any) => typeof m.id === 'string')
+        .map((m: any) => ({
+          id: m.id,
+          name: m.display_name || m.name || m.id,
+          provider: 'xkiro',
+          free: m.id.includes(':free') || m.access_tier === 'free',
+        }))
+        .sort((a: ModelChoice, b: ModelChoice) => Number(b.free) - Number(a.free))
+      return { models }
+    } catch (e) {
+      return { models: STATIC_MODELS.xkiro, note: friendlyError(e, 'Could not load xkiro models.') }
+    }
+  }
+
+  if (provider === 'gemini') {
+    const key = opts.geminiKey || process.env.GEMINI_API_KEY || ''
+    if (!key) {
+      return {
+        models: STATIC_MODELS.gemini,
+        note: 'Free-tier models shown. Add your Gemini API key in Settings to load the full live list.',
+      }
+    }
+    try {
+      const data = await fetchJson(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`)
+      const models: ModelChoice[] = (data.models || [])
+        .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+        .map((m: any) => ({ id: m.name.replace(/^models\//, ''), name: m.displayName || m.name, provider: 'gemini', free: true }))
+      return { models }
+    } catch (e) {
+      return { models: STATIC_MODELS.gemini, note: friendlyError(e, 'Could not load Gemini models.') }
+    }
+  }
+
+  if (provider === 'puter') {
+    const token = process.env.PUTER_AUTH_TOKEN || ''
+    if (!token) {
+      return {
+        models: STATIC_MODELS.puter,
+        note: 'Free models shown. Set PUTER_AUTH_TOKEN (one-time mint: `npm run puter-token`) to load all 1000+ Puter models.',
+      }
+    }
+    try {
+      const puter = await getPuter()
+      const data: any[] = await puter.ai.listModels('gemini')
+      const models: ModelChoice[] = (Array.isArray(data) ? data : [])
+        .filter((m: any) => m && typeof (m.id ?? m.model) === 'string')
+        .map((m: any) => ({
+          id: m.id ?? m.model,
+          name: m.name || m.id || m.model,
+          provider: 'puter',
+          free: true,
+        }))
+      let note = 'Live Puter models — free monthly allowance (≈1000 credits ≈ $1/month): chat ≈ $0, images/video draw credits.'
+      try {
+        const usage: any = await puter.auth.getMonthlyUsage()
+        const rem = usage?.allowanceInfo?.remaining
+        if (typeof rem === 'number' && rem > 0) {
+          // Puter allowance units: 1000 ≈ $1 (banana ≈ 350, GPT Image 2 ≈ 30).
+          const usd = rem < 1_000_000 ? rem / 1000 : rem
+          note = `Puter free allowance left: $${usd.toFixed(2)} this month. Image costs vary — Nano Banana ≈ $0.35, GPT Image 2 much less (auto-fallback when allowance is low).`
+        }
+      } catch {
+        // allowance lookup is best-effort
+      }
+      return { models: models.length ? models : STATIC_MODELS.puter, note }
+    } catch (e) {
+      return { models: STATIC_MODELS.puter, note: puterFriendlyError(e) }
+    }
+  }
+
+  return { models: STATIC_MODELS[provider] || [], note: 'Unknown provider.' }
+}
+
+function toGeminiContents(messages: ChatMessage[]): { contents: any[]; system?: string } {
+  const system = messages.find((m) => m.role === 'system')?.content
+  const contents = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }))
+  return { contents, system }
+}
+
+export async function chat(opts: ChatRequest): Promise<string> {
+  const { provider, model, messages, openrouterKey, geminiKey, xkiroKey } = opts
+  const base = ollamaBase(opts)
+
+  if (provider === 'ollama') {
+    try {
+      const data = await fetchJson(`${base}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages, stream: false }),
+      })
+      const reply = data?.message?.content
+      if (!reply) throw new Error('Ollama returned an empty reply.')
+      return reply
+    } catch (e) {
+      throw new Error(
+        friendlyError(e, `Could not reach Ollama at ${base}. Start it with \`ollama serve\` and pull the model, e.g. \`ollama pull ${model || 'llama3.2'}\`.`),
+      )
+    }
+  }
+
+  if (provider === 'openrouter') {
+    const key = openrouterKey || process.env.OPENROUTER_API_KEY || ''
+    if (!key) throw new Error('OpenRouter needs an API key. Get a free one at https://openrouter.ai/keys and add it in Settings.')
+    try {
+      const data = await fetchJson('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages }),
+      })
+      const reply = data?.choices?.[0]?.message?.content
+      if (!reply) throw new Error('OpenRouter returned an empty reply.')
+      return reply
+    } catch (e) {
+      if (e instanceof Error && e.message.toLowerCase().includes('no free')) {
+        throw new Error('The selected free model is currently rate-limited on OpenRouter. Try another free model.')
+      }
+      throw e
+    }
+  }
+
+  if (provider === 'xkiro') {
+    const key = xkiroKey || process.env.XKIRO_API_KEY || ''
+    if (!key) throw new Error('xkiro needs an API key. Add it in Settings → xkiro.')
+    try {
+      const data = await fetchJson('https://api.xkiro.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages }),
+      })
+      const reply = data?.choices?.[0]?.message?.content
+      if (!reply) throw new Error('xkiro returned an empty reply.')
+      return reply
+    } catch (e) {
+      throw e
+    }
+  }
+
+  if (provider === 'gemini') {
+    const key = geminiKey || process.env.GEMINI_API_KEY || ''
+    if (!key) throw new Error('Gemini needs an API key. Get a free one at https://aistudio.google.com/apikey and add it in Settings.')
+    const { contents, system } = toGeminiContents(messages)
+    const body: any = { contents }
+    if (system) body.systemInstruction = { parts: [{ text: system }] }
+    try {
+      const data = await fetchJson(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+      )
+      const reply = data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('')
+      if (!reply) throw new Error('Gemini returned an empty reply.')
+      return reply
+    } catch (e) {
+      throw e
+    }
+  }
+
+  if (provider === 'puter') {
+    try {
+      const puter = await getPuter()
+      const response = await puter.ai.chat(messages, { model, normalize: true })
+      const reply = response?.message?.content
+      if (!reply) throw new Error('Puter returned an empty reply.')
+      return typeof reply === 'string' ? reply : JSON.stringify(reply)
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('Puter returned an empty reply')) throw e
+      throw new Error(puterFriendlyError(e))
+    }
+  }
+
+  throw new Error(`Unknown provider: ${provider}`)
+}
+
+export interface AnalyzeImageOpts {
+  provider: string
+  model: string
+  imageDataUrl: string // data:image/...;base64,...
+  prompt?: string
+  openrouterKey?: string
+  geminiKey?: string
+  ollamaBaseUrl?: string
+}
+
+export async function analyzeImage(opts: AnalyzeImageOpts): Promise<string> {
+  const { provider, model, imageDataUrl, openrouterKey, geminiKey } = opts
+  const base = ollamaBase(opts)
+  const prompt = opts.prompt?.trim() || 'Describe this image in detail.'
+  const b64 = imageDataUrl.split(',')[1] || ''
+  if (!b64) throw new Error('Invalid image data URL.')
+
+  if (provider === 'ollama') {
+    try {
+      const data = await fetchJson(`${base}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: prompt, images: [b64] }],
+          stream: false,
+        }),
+      })
+      const reply = data?.message?.content
+      if (!reply) throw new Error('Ollama returned an empty reply.')
+      return reply
+    } catch (e) {
+      throw new Error(
+        friendlyError(
+          e,
+          `Could not reach Ollama at ${base}. For image analysis install a vision model: \`ollama pull llava\`.`,
+        ),
+      )
+    }
+  }
+
+  if (provider === 'openrouter') {
+    const key = openrouterKey || process.env.OPENROUTER_API_KEY || ''
+    if (!key) throw new Error('OpenRouter needs an API key. Get a free one at https://openrouter.ai/keys and add it in Settings.')
+    try {
+      const data = await fetchJson('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                { type: 'image_url', image_url: { url: imageDataUrl } },
+              ],
+            },
+          ],
+        }),
+      })
+      const reply = data?.choices?.[0]?.message?.content
+      if (!reply) throw new Error('OpenRouter returned an empty reply.')
+      return reply
+    } catch (e) {
+      if (e instanceof Error && e.message.toLowerCase().includes('no free')) {
+        throw new Error('The selected free model is currently rate-limited on OpenRouter. Try another free model.')
+      }
+      throw e
+    }
+  }
+
+  if (provider === 'gemini') {
+    const key = geminiKey || process.env.GEMINI_API_KEY || ''
+    if (!key) throw new Error('Gemini needs an API key. Get a free one at https://aistudio.google.com/apikey and add it in Settings.')
+    const match = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/)
+    if (!match) throw new Error('Invalid image data URL.')
+    const mime = match[1]
+    const raw = match[2]
+    try {
+      const data = await fetchJson(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: raw } }],
+              },
+            ],
+          }),
+        },
+      )
+      const reply = data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('')
+      if (!reply) throw new Error('Gemini returned an empty reply.')
+      return reply
+    } catch (e) {
+      throw e
+    }
+  }
+
+  if (provider === 'puter') {
+    // Image analysis through Puter's chat(prompt, media, options) form.
+    try {
+      const puter = await getPuter()
+      const response = await puter.ai.chat(prompt, imageDataUrl, { model, normalize: true })
+      const reply = response?.message?.content
+      if (!reply) throw new Error('Puter returned an empty reply.')
+      return typeof reply === 'string' ? reply : JSON.stringify(reply)
+    } catch (e) {
+      throw new Error(puterFriendlyError(e))
+    }
+  }
+
+  throw new Error(`Unknown provider: ${provider}`)
+}
+
+export interface GenerateGeminiImageOpts {
+  prompt: string
+  model?: string
+  aspectRatio?: string
+  geminiKey?: string
+}
+
+// Free-tier note: as of 2026, Gemini's image models (Nano Banana family) have a
+// 0-images/day rate limit on Free Tier keys — the API returns a clear
+// "Rate limit exceeded ... (limit: 0 requests per day)" error. This path is
+// correct and works on keys with image quota (paid tier).
+export async function generateGeminiImage(opts: GenerateGeminiImageOpts): Promise<{ data: Buffer; mimeType: string }> {
+  const key = opts.geminiKey || process.env.GEMINI_API_KEY || ''
+  if (!key) {
+    throw new Error('Gemini needs an API key. Get a free one at https://aistudio.google.com/apikey and add it in Settings.')
+  }
+  const model = opts.model || 'gemini-3.1-flash-image'
+  try {
+    const data = await fetchJson('https://generativelanguage.googleapis.com/v1beta/interactions', {
+      method: 'POST',
+      headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        input: [{ type: 'text', text: opts.prompt.slice(0, 4000) }],
+        response_format: {
+          type: 'image',
+          ...(opts.aspectRatio ? { aspect_ratio: opts.aspectRatio } : {}),
+        },
+      }),
+    })
+    // REST Interaction → steps[] → model_output → content[ { type:'image', data, mime_type } ]
+    const steps: any[] = Array.isArray(data?.steps) ? data.steps : []
+    let img: { data?: string; mime_type?: string } | null = null
+    for (const s of steps) {
+      if (s?.type !== 'model_output') continue
+      for (const block of s?.content ?? []) {
+        if (block?.type === 'image' && block?.data) {
+          img = block
+          break
+        }
+      }
+      if (img) break
+    }
+    // Fallback for legacy shape (candidates[].content.parts[].inlineData)
+    if (!img) {
+      const parts = data?.candidates?.[0]?.content?.parts ?? []
+      const inline = parts.find((p: any) => p?.inlineData?.data)?.inlineData
+      if (inline?.data) img = inline
+    }
+    if (!img?.data) {
+      throw new Error('Gemini returned no image. Try a different prompt or model.')
+    }
+    return {
+      data: Buffer.from(img.data, 'base64'),
+      mimeType: img.mime_type || 'image/png',
+    }
+  } catch (e) {
+    throw new Error(friendlyError(e, 'Gemini image generation failed.'))
+  }
+}
+
+export interface GeneratePuterImageOpts {
+  prompt: string
+  model?: string
+  aspectRatio?: string
+}
+
+// Puter image generation via puter.ai.txt2img (Node resolves to { src }).
+// Model costs vary a lot against the free monthly allowance (Nano Banana
+// ≈ $0.35/image, GPT Image 2 a small fraction of that), so when the chosen
+// model is declined for insufficient allowance we auto-retry once with the
+// cheapest option that still fits the balance — the UI shows which model
+// actually rendered via the `model` field of the result.
+export async function generatePuterImage(opts: GeneratePuterImageOpts): Promise<{
+  data: Buffer
+  mimeType: string
+  model: string
+}> {
+  const requested = opts.model || 'gemini-3.1-flash-image'
+  const attempts = requested === 'gpt-image-2' ? [requested] : [requested, 'gpt-image-2']
+  let lastErr = ''
+  const ratio = opts.aspectRatio?.split(':')
+  const optionsFor = (model: string): Record<string, unknown> => {
+    const options: Record<string, unknown> = { model }
+    if (ratio?.length === 2) {
+      options.ratio = { w: Number(ratio[0]), h: Number(ratio[1]) }
+    }
+    return options
+  }
+  for (const model of attempts) {
+    try {
+      const puter = await getPuter()
+      const image: any = await puter.ai.txt2img(opts.prompt.slice(0, 4000), optionsFor(model))
+      const src = image?.src || image?.url || (typeof image === 'string' ? image : '')
+      if (!src) {
+        throw new Error('Puter returned no image. Try a different prompt or model.')
+      }
+      const { data, mimeType } = await imgSrcToBuffer(src)
+      return { data, mimeType, model }
+    } catch (e) {
+      lastErr = puterFriendlyError(e)
+      if (!/insufficient/i.test(lastErr)) throw new Error(lastErr)
+      // allowance too low for this model → try the cheaper one next
+    }
+  }
+  throw new Error(lastErr || 'Puter image generation failed.')
+}
+
+export interface GeneratePuterVideoOpts {
+  prompt: string
+  model?: string
+  /** Clip length in seconds (model default when omitted). */
+  seconds?: number
+  /** test_mode — free sample clip; still validates the model id. */
+  testMode?: boolean
+}
+
+// Puter animated output via puter.ai.txt2vid (Node resolves to an object with
+// .src). Model ids below were verified live against this account (Veo 3.1 /
+// Seedance). Real runs spend a small slice of the free monthly allowance;
+// `testMode: true` returns a sample clip free of charge and validates the id.
+export async function generatePuterVideo(opts: GeneratePuterVideoOpts): Promise<{ data: Buffer; mimeType: string }> {
+  const model = opts.model || 'veo-3.1-lite'
+  try {
+    const puter = await getPuter()
+    const options: Record<string, unknown> = { model }
+    if (opts.seconds && opts.seconds > 0) options.seconds = opts.seconds
+    if (opts.testMode) options.test_mode = true
+    const video: any = await puter.ai.txt2vid(opts.prompt.slice(0, 4000), options)
+    const src = video?.src || video?.url || (typeof video === 'string' ? video : '')
+    if (!src) {
+      throw new Error('Puter returned no video. Try a different prompt or model.')
+    }
+    return await srcToBuffer(src, 'video/mp4', 240000)
+  } catch (e) {
+    throw new Error(puterFriendlyError(e))
+  }
+}
+
+async function srcToBuffer(src: string, mimeFallback: string, timeoutMs: number): Promise<{ data: Buffer; mimeType: string }> {
+  if (src.startsWith('data:')) {
+    const m = src.match(/^data:([^;,]+)[^,]*,(.*)$/s)
+    return {
+      data: Buffer.from(m ? m[2] : src.split(',')[1] || '', 'base64'),
+      mimeType: m ? m[1] : mimeFallback,
+    }
+  }
+  const resp = await fetch(src, { signal: AbortSignal.timeout(timeoutMs) })
+  if (!resp.ok) throw new Error(`Puter media fetch returned HTTP ${resp.status}`)
+  return {
+    data: Buffer.from(await resp.arrayBuffer()),
+    mimeType: resp.headers.get('content-type') || mimeFallback,
+  }
+}
+
+async function imgSrcToBuffer(src: string): Promise<{ data: Buffer; mimeType: string }> {
+  return srcToBuffer(src, 'image/png', 120000)
+}

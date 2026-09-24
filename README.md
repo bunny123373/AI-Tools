@@ -132,4 +132,5 @@ Notes:
 - **Ollama is local** — it can't reach your PC from Vercel serverless or Render. Use xkiro / OpenRouter / Gemini keys (free tiers) for a public instance; users can also paste keys in Settings.
 - **Chat history & accounts** are stored in `.data/` on the server disk — ephemeral on Vercel serverless and Render free instances, so they reset on redeploy. Use a database for durable, public deployment.
 - **Tavily web search** stays a per-user key in Settings (no env var).
+- **YouTube bot-wall**: cloud IPs often get *"Sign in to confirm you're not a bot"*. The backend first tries non-web player clients (`tv`, `ios`, `web_safari`, `android`) plus chrome TLS impersonation (`curl-cffi`) and an EU `Accept-Language`. If YouTube still blocks, export your browser cookies and set **`YT_COOKIES_CONTENT`** on Render (Env tab → paste the whole Netscape `cookies.txt` → Save → redeploy). `YT_COOKIES` (path to a cookies.txt in the image) also works. Cookies are credentials — never commit them to the repo.
 - The Render backend opens its endpoints with permissive CORS because the frontend lives on a different origin.

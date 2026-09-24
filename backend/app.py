@@ -33,6 +33,10 @@ UA = (
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
 
+# Countries known to NOT require a YouTube consent gate, used as the
+# Accept-Language hint on every outbound request.
+DEFAULT_LANG = "en-US,en;q=0.9"
+
 
 # ---------- helpers ----------
 
@@ -62,21 +66,43 @@ def human_duration(total_sec):
 
 
 # YouTube serves a "Sign in to confirm you're not a bot" challenge to
-# cloud/datacenter IPs (Render/Heroku/VPS). Switching the player client to
-# `tv` (with ios/web fallbacks) bypasses that wall for info + downloads.
+# cloud/datacenter IPs (Render/Heroku/VPS). Strategy to bypass:
+# 1. tv/ios player clients (seen as a TV app, not a browser tab),
+# 2. chrome impersonation (curl_cffi TLS fingerprint) when installed,
+# 3. an E.U. consent-free Accept-Language hint on every request.
 YTDL_EXTRACTOR_ARGS = {"youtube": {"player_client": ["tv", "ios", "web"]}}
 
 
+def _ua_headers():
+    return {
+        "User-Agent": UA,
+        "Accept-Language": DEFAULT_LANG,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+
+
+def _ydl_opts(extra=None):
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+        "socket_timeout": 20,
+        "noprogress": True,
+        "extractor_args": YTDL_EXTRACTOR_ARGS,
+        "http_headers": _ua_headers(),
+    }
+    try:
+        import curl_cffi  # noqa: F401
+
+        opts["impersonate"] = {"client": "chrome", "version": "124"}
+    except ImportError:
+        pass
+    opts.update(extra or {})
+    return opts
+
+
 def _fetch_info(url):
-    with yt_dlp.YoutubeDL(
-        {
-            "quiet": True,
-            "no_warnings": True,
-            "noplaylist": True,
-            "socket_timeout": 20,
-            "extractor_args": YTDL_EXTRACTOR_ARGS,
-        }
-    ) as ydl:
+    with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
         info = ydl.extract_info(url, download=False)
     vid = info.get("id")
     return {
@@ -157,7 +183,7 @@ def youtube_duration():
         try:
             r = requests.get(
                 f"https://www.youtube.com/watch?v={vid}",
-                headers={"user-agent": UA, "accept-language": "en"},
+                headers=_ua_headers(),
                 timeout=9,
             )
             r.raise_for_status()
@@ -217,17 +243,14 @@ def youtube_download():
 
     tmpdir = tempfile.mkdtemp(prefix="ytdl_")
     try:
-        opts = {
-            "outtmpl": os.path.join(tmpdir, "%(id)s.%(ext)s"),
-            "quiet": True,
-            "no_warnings": True,
-            "noplaylist": True,
-            "windowsfilenames": True,
-            "socket_timeout": 30,
-            "retries": 3,
-            "noprogress": True,
-            "extractor_args": YTDL_EXTRACTOR_ARGS,
-        }
+        opts = _ydl_opts(
+            {
+                "outtmpl": os.path.join(tmpdir, "%(id)s.%(ext)s"),
+                "windowsfilenames": True,
+                "socket_timeout": 30,
+                "retries": 3,
+            }
+        )
         if kind == "audio":
             # extract the best audio as M4A (ffmpeg step)
             opts["format"] = "bestaudio[ext=m4a]/bestaudio/best"

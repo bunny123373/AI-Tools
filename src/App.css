@@ -3243,14 +3243,14 @@ label {
   /* ~ Composer: floating pill, round controls, no iOS zoom ~ */
   .composer {
     border-radius: 22px;
-    padding: 8px 10px;
-    gap: 6px;
+    padding: 10px 12px;
+    gap: 8px;
   }
   .composer textarea {
     font-size: 16px; /* prevents iOS zoom-on-focus */
-    min-height: 44px;
-    max-height: 120px;
-    padding: 10px 6px;
+    min-height: 58px;
+    max-height: 150px;
+    padding: 12px 8px;
   }
   .composer-icon {
     width: 42px;
@@ -3370,6 +3370,11 @@ label {
   .app.app-chat-mode .main {
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
   }
+  /* Hide the web-search status line under the composer on phones (the
+     Tavily-key hint belongs in Settings; it just eats vertical space). */
+  .composer-note {
+    display: none;
+  }
   .app.app-chat-mode .chat-page:not(.welcome) .composer {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   }
@@ -3377,12 +3382,12 @@ label {
     min-height: calc(100dvh - 120px);
     justify-content: center;
   }
-  /* FAB stays above the composer (composer top is ~100px on phones) */
+  /* FAB stays above the composer (composer top is ~128px on phones now) */
   .app.app-chat-mode .ft-fab {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 100px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 134px);
   }
   .app.app-chat-mode .ft-panel {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 164px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 202px);
   }
 }
 

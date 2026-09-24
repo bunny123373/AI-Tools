@@ -5,3 +5,8 @@ requests>=2.31
 yt-dlp>=2025.6.9
 youtube-transcript-api>=1.0.0
 curl-cffi>=0.7.3
+# PO token provider plugin — generates proof-of-origin tokens for the YouTube
+# extractor so datacenter IPs (Render) can bypass the "Sign in to confirm
+# you're not a bot" wall and GVS 403s. Requires the bgutil provider script
+# (see Dockerfile) — pip installs only the yt-dlp plugin side.
+bgutil-ytdlp-pot-provider>=2.0.0

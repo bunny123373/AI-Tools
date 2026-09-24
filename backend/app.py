@@ -78,8 +78,23 @@ def human_duration(total_sec):
 # 4. optional operator cookies: set YT_COOKIES_CONTENT (inline Netscape
 #    cookies.txt text, written to a temp file — ideal for Render env vars)
 #    or YT_COOKIES (path to a cookies.txt in the container). yt-dlp then
-#    authenticates as your browser, which is the only guaranteed fix.
+#    authenticates as your browser, which is the only guaranteed fix,
+# 5. proof-of-origin tokens via the bgutil-ytdlp-pot-provider plugin (pip
+#    requirement) + the bgutil Node script baked into the Docker image — the
+#    plugin README documents bypassing the exact "Sign in to confirm you're
+#    not a bot" wall from flagged IPs, and newer yt-dlp needs a per-video PO
+#    token for GVS/player requests. Only wired when YT_BGUTIL_HOME points at
+#    a built provider (auto-enabled in the image; harmless to leave unset).
 YTDL_EXTRACTOR_ARGS = {"youtube": {"player_client": ["tv", "ios", "web_safari", "android", "web"]}}
+
+BGUTIL_SERVER_HOME = os.environ.get("YT_BGUTIL_HOME", "/opt/bgutil-ytdlp-pot-provider/server")
+if os.path.isdir(BGUTIL_SERVER_HOME):
+    YTDL_EXTRACTOR_ARGS["youtubepot-bgutilscript"] = {"server_home": [BGUTIL_SERVER_HOME]}
+
+# Optional token TTL override passthrough (hours) — the plugin defaults to 6.
+_ttl = os.environ.get("YT_TOKEN_TTL", "").strip()
+if _ttl:
+    os.environ.setdefault("TOKEN_TTL", _ttl)
 
 _COOKIE_FILE_TMP = os.path.join(tempfile.gettempdir(), "ytdl_cookies.txt")
 

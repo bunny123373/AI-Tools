@@ -61,6 +61,12 @@ def human_duration(total_sec):
     return f"{m}:{s:02d}"
 
 
+# YouTube serves a "Sign in to confirm you're not a bot" challenge to
+# cloud/datacenter IPs (Render/Heroku/VPS). Switching the player client to
+# `tv` (with ios/web fallbacks) bypasses that wall for info + downloads.
+YTDL_EXTRACTOR_ARGS = {"youtube": {"player_client": ["tv", "ios", "web"]}}
+
+
 def _fetch_info(url):
     with yt_dlp.YoutubeDL(
         {
@@ -68,6 +74,7 @@ def _fetch_info(url):
             "no_warnings": True,
             "noplaylist": True,
             "socket_timeout": 20,
+            "extractor_args": YTDL_EXTRACTOR_ARGS,
         }
     ) as ydl:
         info = ydl.extract_info(url, download=False)
@@ -219,6 +226,7 @@ def youtube_download():
             "socket_timeout": 30,
             "retries": 3,
             "noprogress": True,
+            "extractor_args": YTDL_EXTRACTOR_ARGS,
         }
         if kind == "audio":
             # extract the best audio as M4A (ffmpeg step)

@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import tempfile
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
@@ -105,6 +106,21 @@ def _ua_headers():
     }
 
 
+def _exc_detail(exc):
+    """Collapse an exception chain (yt-dlp wraps causes) into one readable
+    string — yt-dlp DownloadError often has an empty message while the real
+    reason sits in __cause__."""
+    parts = []
+    cur = exc
+    seen = set()
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        msg = str(cur).strip()
+        parts.append(msg or f"{type(cur).__name__}: (no message)")
+        cur = cur.__cause__ or cur.__context__
+    return " | ".join(p for p in parts if p)[:900]
+
+
 def _ydl_opts(extra=None):
     opts = {
         "quiet": True,
@@ -158,7 +174,8 @@ def youtube_info():
     try:
         return jsonify(_fetch_info(url))
     except Exception as exc:  # noqa: BLE001
-        return jsonify({"error": str(exc)[:500]}), 502
+        traceback.print_exc()
+        return jsonify({"error": _exc_detail(exc)}), 502
 
 
 @app.post("/youtube/transcript")
@@ -324,7 +341,8 @@ def youtube_download():
         )
     except Exception as exc:  # noqa: BLE001
         shutil.rmtree(tmpdir, ignore_errors=True)
-        return jsonify({"error": str(exc)[:500]}), 502
+        traceback.print_exc()
+        return jsonify({"error": _exc_detail(exc)}), 502
 
 
 if __name__ == "__main__":

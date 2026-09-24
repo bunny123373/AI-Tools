@@ -8,7 +8,6 @@ import { analyzeImage, createChat, generateImageInfo, getChat, loadSettings, sav
 import { speak, startVoiceInput, stopSpeaking, sttSupported, ttsSupported } from '../lib/speech'
 import { downscaleToDataUrl } from '../utils/image'
 import ModelPicker from '../components/ModelPicker'
-import HeroBanner from '../components/HeroBanner'
 import { SUGGESTIONS } from '../registry'
 
 interface Props {
@@ -488,8 +487,6 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
     <div className={`page chat-page ${welcome ? 'welcome' : ''}`}>
       {welcome ? (
         <>
-          <HeroBanner />
-
           <ModelPicker big settings={settings} onChange={update} onOpenSettings={onOpenSettings} />
 
           <div className="chat-welcome">

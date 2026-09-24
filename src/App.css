@@ -1049,72 +1049,6 @@ code {
   display: none;
 }
 
-/* ~ Hero banner ~ */
-.hero {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 18px;
-  padding: 28px 30px;
-  border-radius: 18px;
-  border: 1px solid var(--border);
-  background:
-    radial-gradient(520px 220px at 8% 0%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
-    radial-gradient(420px 200px at 98% 10%, color-mix(in srgb, var(--accent-2) 8%, transparent), transparent 55%),
-    var(--panel-bg);
-  overflow: hidden;
-}
-
-.hero-title {
-  font-size: clamp(1.5rem, 3.6vw, 2.15rem);
-  line-height: 1.14;
-  letter-spacing: 0.01em;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.hero-gradient {
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.hero-desc {
-  color: var(--muted);
-  margin-top: 10px;
-  max-width: 520px;
-  font-size: 0.95rem;
-}
-
-.hero-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.hero-badge {
-  font-size: 0.76rem;
-  color: var(--text);
-  padding: 4px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--accent-line);
-  background: var(--accent-soft);
-}
-
-.hero-art {
-  display: grid;
-  place-items: center;
-}
-
-.hero-robot {
-  width: clamp(150px, 20vw, 210px);
-  height: auto;
-  filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 26%, transparent));
-}
-
 /* ~ Provider / model card ~ */
 .picker {
   border: 1px solid var(--border);
@@ -2910,15 +2844,6 @@ label {
     max-width: none;
   }
 
-  .hero {
-    grid-template-columns: 1fr;
-    padding: 22px 18px;
-  }
-
-  .hero-art {
-    display: none;
-  }
-
   .chat-welcome {
     padding: 24px 16px 28px;
   }
@@ -3033,14 +2958,6 @@ label {
 @media (max-width: 480px) {
   .brand-name {
     font-size: 0.98rem;
-  }
-
-  .hero-title {
-    font-size: 1.35rem;
-  }
-
-  .hero-desc {
-    font-size: 0.88rem;
   }
 
   .cw-suggestions {

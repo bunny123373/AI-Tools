@@ -1744,6 +1744,41 @@ label > span {
   font-weight: 600;
 }
 
+/* ~ ChatGPT-style image flow: style question bubble + chips ~ */
+.style-q {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--fg);
+  line-height: 1.45;
+}
+.style-q em {
+  font-style: italic;
+  color: var(--muted);
+}
+.style-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.style-chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.style-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg);
+}
+.style-chip.plain {
+  border-style: dashed;
+}
+
 /* ~ Guest gate (signed-out, non-chat tabs) ~ */
 .guest-gate {
   display: flex;

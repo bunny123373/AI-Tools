@@ -30,6 +30,19 @@ const GEN_SIZES: Record<string, [number, number]> = {
   '2:3': [768, 1152],
 }
 
+// ChatGPT-style image flow: after the user describes the image we ask for a
+// style (chips in the chat), then append the chosen style to the prompt.
+const IMAGE_STYLES: { label: string; hint: string }[] = [
+  { label: '✨ Photorealistic', hint: 'photorealistic, natural light, high detail' },
+  { label: '🎨 Anime', hint: 'anime style, vibrant colors' },
+  { label: '🧊 3D render', hint: '3D render, cinematic lighting' },
+  { label: '🖌️ Watercolor', hint: 'watercolor painting, soft pastel colors' },
+  { label: '👾 Pixel art', hint: 'pixel art, retro 8-bit' },
+  { label: '⬜ Minimalist', hint: 'minimalist, clean, simple composition' },
+  { label: '🎬 Cinematic', hint: 'cinematic, dramatic lighting, film still' },
+  { label: '✏️ Flat vector', hint: 'flat vector illustration, bold colors' },
+]
+
 export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings }: Props) {
   // App settings (provider, model, temperature…) persisted to localStorage.
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
@@ -45,6 +58,8 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
   // Composer switched to image-generation mode (like ChatGPT's image toggle).
   const [genMode, setGenMode] = useState(false)
   const [genAspect, setGenAspect] = useState('1:1')
+  // Awaiting the user's style choice for an image (ChatGPT-style ask step).
+  const [pendingGen, setPendingGen] = useState<{ prompt: string } | null>(null)
   // Id of the conversation currently being edited (null = brand-new chat).
   const [convId, setConvId] = useState<string | null>(initialId ?? null)
   const [loadingChat, setLoadingChat] = useState(!!initialId)
@@ -113,6 +128,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
       // Downscale now (also what the vision API needs) — keeps history light.
       const dataUrl = await downscaleToDataUrl(f, 1280, 0.85)
       setGenMode(false)
+      setPendingGen(null)
       setAttach({ dataUrl, name: f.name })
     } catch {
       setAttach(null)
@@ -163,29 +179,8 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
 
     try {
       if (genMode) {
-        // ---- In-chat image generation ----
-        const isGem = settings.provider === 'gemini'
-        const isPut = settings.provider === 'puter'
-        const isXk = settings.provider === 'xkiro'
-        const engine = (isGem ? 'gemini' : isXk ? 'xkiro' : isPut ? 'puter' : 'pollinations') as
-          | 'gemini'
-          | 'pollinations'
-          | 'puter'
-          | 'xkiro'
-        const [w, h] = GEN_SIZES[genAspect] || GEN_SIZES['1:1']
-        const { blob, usedModel } = await generateImageInfo({
-          prompt: text,
-          width: w,
-          height: h,
-          seed: Math.floor(Math.random() * 1_000_000_000),
-          model: isGem || isPut ? 'gemini-3.1-flash-image' : isXk ? 'sensenova/sensenova-u1.5-lite' : 'flux',
-          provider: engine,
-          geminiKey: isGem ? settings.geminiKey || undefined : undefined,
-          xkiroKey: isXk ? settings.xkiroKey || undefined : undefined,
-        })
-        // Convert to a compact JPEG data URL so the image survives in history.
-        const image = await downscaleToDataUrl(blob, 1024, 0.85)
-        await finish([...next, { role: 'assistant', content: '', image, imageLabel: text, usedModel }])
+        // ChatGPT-style: describe → we ask for a style → chips → generate.
+        setPendingGen({ prompt: text })
       } else if (hasAttach && attachSnapshot) {
         // ---- Vision analysis (stays in the chat thread) ----
         const res = await analyzeImage({
@@ -232,12 +227,56 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
     inputRef.current?.focus()
   }
 
+  // Actually generate the image (called from the style chips). The user message
+  // is already in `messages`; we just append the assistant image message once
+  // the chosen provider engine returns bytes.
+  const genImage = async (prompt: string) => {
+    setPendingGen(null)
+    setBusy(true)
+    const isGem = settings.provider === 'gemini'
+    const isPut = settings.provider === 'puter'
+    const isXk = settings.provider === 'xkiro'
+    const engine = (isGem ? 'gemini' : isXk ? 'xkiro' : isPut ? 'puter' : 'pollinations') as
+      | 'gemini'
+      | 'pollinations'
+      | 'puter'
+      | 'xkiro'
+    const [w, h] = GEN_SIZES[genAspect] || GEN_SIZES['1:1']
+    try {
+      const { blob, usedModel } = await generateImageInfo({
+        prompt,
+        width: w,
+        height: h,
+        seed: Math.floor(Math.random() * 1_000_000_000),
+        model: isGem || isPut ? 'gemini-3.1-flash-image' : isXk ? 'sensenova/sensenova-u1.5-lite' : 'flux',
+        provider: engine,
+        geminiKey: isGem ? settings.geminiKey || undefined : undefined,
+        xkiroKey: isXk ? settings.xkiroKey || undefined : undefined,
+      })
+      // Convert to a compact JPEG data URL so the image survives in history.
+      const image = await downscaleToDataUrl(blob, 1024, 0.85)
+      const final: ChatMessage[] = [...messages, { role: 'assistant', content: '', image, imageLabel: prompt, usedModel }]
+      setMessages(final)
+      await persist(convId, final)
+    } catch (e) {
+      const final: ChatMessage[] = [
+        ...messages,
+        { role: 'assistant', content: `Error: ${e instanceof Error ? e.message : 'Something went wrong.'}` },
+      ]
+      setMessages(final)
+      await persist(convId, final)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const resetChat = () => {
     setMessages([])
     setSourcesMap({})
     setInput('')
     setAttach(null)
     setGenMode(false)
+    setPendingGen(null)
     setConvId(null)
   }
 
@@ -325,7 +364,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
             ))}
           </div>
           <p className="hint composer-note">
-            Image mode — powered by your provider's image model (Gemini / Puter / xkiro) or free Pollinations. The image appears right here in the chat.
+            Image mode — describe the image and I'll ask for the style first (like ChatGPT), then generate it right here. Powered by your provider's image model (Gemini / Puter / xkiro) or free Pollinations.
           </p>
         </div>
       )}
@@ -363,6 +402,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
           onClick={() => {
             setGenMode((v) => !v)
             setAttach(null)
+            setPendingGen(null)
           }}
         >
           <ImageIcon size={17} />
@@ -541,7 +581,39 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
                 )}
               </div>
             ))}
-            {(busy || loadingChat) && (
+            {pendingGen ? (
+              <div className="msg assistant">
+                <div className="bubble">
+                  <p className="style-q">
+                    <Sparkles size={14} /> How should{' '}
+                    <em>
+                      “{pendingGen.prompt.slice(0, 80)}
+                      {pendingGen.prompt.length > 80 ? '…' : ''}”
+                    </em>{' '}
+                    look? Pick a style or generate as-is:
+                  </p>
+                  <div className="style-chips">
+                    {IMAGE_STYLES.map((s) => (
+                      <button
+                        key={s.hint}
+                        type="button"
+                        className="style-chip"
+                        onClick={() => void genImage(`${pendingGen.prompt}, ${s.hint}`)}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="style-chip plain"
+                      onClick={() => void genImage(pendingGen.prompt)}
+                    >
+                      Generate now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (busy || loadingChat) && (
               <div className="msg assistant">
                 <div className="bubble typing">
                   <span />

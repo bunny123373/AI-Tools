@@ -79,6 +79,7 @@ function GenerateMode({ settings }: { settings: Settings }) {
   const [animate, setAnimate] = useState(false)
   const [vidModel, setVidModel] = useState('veo-3.1-lite')
   const [seconds, setSeconds] = useState(4)
+  const [style, setStyle] = useState('')
   const [busy, setBusy] = useState(false)
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
@@ -131,6 +132,19 @@ function GenerateMode({ settings }: { settings: Settings }) {
     ['sensenova/sensenova-u1.5-lite', 'SenseNova U1.5 Lite (free)'],
   ]
 
+  // Same style vocabulary as the chat's ChatGPT-style image flow.
+  const styleOptions: [string, string][] = [
+    ['', 'None (follow the prompt)'],
+    ['photorealistic, natural light, high detail', 'Photorealistic'],
+    ['anime style, vibrant colors', 'Anime'],
+    ['3D render, cinematic lighting', '3D render'],
+    ['watercolor painting, soft pastel colors', 'Watercolor'],
+    ['pixel art, retro 8-bit', 'Pixel art'],
+    ['minimalist, clean, simple composition', 'Minimalist'],
+    ['cinematic, dramatic lighting, film still', 'Cinematic'],
+    ['flat vector illustration, bold colors', 'Flat vector'],
+  ]
+
   // Verified live against Puter via test_mode (Veo 3.1 / Seedance available on
   // this account's free allowance; Kling/Wan ids differ per tier).
   const puterVideoModels: [string, string][] = [
@@ -150,9 +164,10 @@ function GenerateMode({ settings }: { settings: Settings }) {
     setFallbackNote('')
     try {
       const s = Math.floor(Math.random() * 1_000_000_000)
+      const fullPrompt = style ? `${prompt.trim()}, ${style}` : prompt.trim()
       if (animate && isPuter) {
         const blob = await generateVideo({
-          prompt: prompt.trim(),
+          prompt: fullPrompt,
           model: vidModel,
           seconds,
         })
@@ -164,7 +179,7 @@ function GenerateMode({ settings }: { settings: Settings }) {
       } else {
         const [w, h] = sizes[aspect]
         const { blob, usedModel } = await generateImageInfo({
-          prompt: prompt.trim(),
+          prompt: fullPrompt,
           width: w,
           height: h,
           seed: s,
@@ -210,6 +225,16 @@ function GenerateMode({ settings }: { settings: Settings }) {
           {Object.keys(sizes).map((a) => (
             <option key={a} value={a}>
               {a}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="option-row">
+        <span>Style</span>
+        <select value={style} onChange={(e) => setStyle(e.target.value)}>
+          {styleOptions.map(([id, label]) => (
+            <option key={id} value={id}>
+              {label}
             </option>
           ))}
         </select>

@@ -7,6 +7,7 @@ Endpoints:
   POST /youtube/duration    {urls}           → playlist total (one link per line)
   GET  /youtube/thumb?url=...                → jpeg bytes
   POST /youtube/download    {url, kind}      → file (kind: audio|video)
+  POST /youtube/subtitles   {url, lang?}     → {srt, lang, label, id}
 
 Download engine: yt-dlp + ffmpeg. ffmpeg (installed in the Docker image)
 merges bestvideo+bestaudio into an MP4 and extracts High-Quality MP3 audio.
@@ -215,6 +216,34 @@ def _fetch_info(url):
     }
 
 
+def _vtt_to_srt(path):
+    """Convert a WebVTT subtitle file to SRT. Kept as a safety net for when
+    yt-dlp writes .vtt (e.g. ffmpeg missing) — sets cue numbers, swaps the
+    millisecond separator (VTT uses dots, SRT uses commas) and drops cue
+    settings. Returns the path of the new .srt file."""
+    out = os.path.join(os.path.dirname(path), os.path.splitext(os.path.basename(path))[0] + ".srt")
+    with open(path, encoding="utf-8") as fh:
+        raw = fh.read().replace("\r\n", "\n").replace("\r", "\n")
+    blocks = []
+    n = 0
+    for seg in re.split(r"\n\s*\n", raw):
+        lines_ = [ln for ln in seg.split("\n") if ln.strip()]
+        if not lines_ or lines_[0].lower().startswith("webvtt"):
+            continue
+        ti = next((i for i, ln in enumerate(lines_) if "-->" in ln), None)
+        if ti is None:
+            continue
+        ts_line = lines_[ti].replace(".", ",")
+        parts = ts_line.split("-->")
+        if len(parts) == 2 and " " in parts[1]:
+            ts_line = f"{parts[0].strip()} --> {parts[1].split(' ', 1)[0]}"
+        n += 1
+        blocks.append(f"{n}\n{ts_line}\n{'\n'.join(lines_[ti + 1:])}".rstrip())
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write("\n\n".join(blocks) + "\n")
+    return out
+
+
 # ---------- routes ----------
 
 @app.get("/health")
@@ -409,6 +438,61 @@ def youtube_download():
         shutil.rmtree(tmpdir, ignore_errors=True)
         traceback.print_exc()
         return jsonify({"error": _exc_detail(exc)}), 502
+
+
+@app.post("/youtube/subtitles")
+def youtube_subtitles():
+    body = request.get_json(silent=True) or {}
+    url = str(body.get("url") or "").strip()
+    lang = str(body.get("lang") or "en").strip() or "en"
+    vid = video_id(url)
+    if not vid:
+        return jsonify({"error": "This does not look like a valid YouTube link."}), 400
+
+    tmpdir = tempfile.mkdtemp(prefix="ytdl_subs_")
+    try:
+        # writesubtitles + skip_download makes yt-dlp fetch (and transcode to
+        # .srt via ffmpeg) the caption files without downloading the media.
+        info = _run_ydl(
+            url,
+            extra={
+                "skip_download": True,
+                "writesubtitles": True,
+                "writeautomaticsub": True,  # manual subs first, auto-generated as fallback
+                "subtitleslangs": [lang],
+                "subtitlesformat": "srt",
+                "outtmpl": os.path.join(tmpdir, "sub.%(ext)s"),
+            },
+            download=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        traceback.print_exc()
+        return jsonify({"error": _exc_detail(exc)}), 502
+
+    srt_path = None
+    for name in sorted(os.listdir(tmpdir)):
+        low = name.lower()
+        if low.endswith(".srt"):
+            srt_path = os.path.join(tmpdir, name)
+            break
+        if low.endswith(".vtt") and srt_path is None:
+            srt_path = _vtt_to_srt(os.path.join(tmpdir, name))
+    if srt_path is None or not os.path.exists(srt_path):
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        return jsonify({"error": f"No captions found for language '{lang}' on this video."}), 404
+
+    with open(srt_path, encoding="utf-8") as fh:
+        srt = fh.read()
+    shutil.rmtree(tmpdir, ignore_errors=True)
+    return jsonify(
+        {
+            "srt": srt,
+            "lang": lang,
+            "label": (info or {}).get("title") or f"YouTube video ({vid})",
+            "id": vid,
+        }
+    )
 
 
 if __name__ == "__main__":

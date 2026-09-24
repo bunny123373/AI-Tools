@@ -112,6 +112,13 @@ export const fetchYtThumb = async (videoUrl: string): Promise<Blob> => {
   return res.blob()
 }
 
+/** Timed captions as SRT text (manual subs preferred, auto-generated fallback). */
+export const ytSubtitles = (url: string, lang = 'en') =>
+  api<{ srt: string; lang: string; label: string; id: string }>(
+    ytPath('/youtube/subtitles', '/api/tools/youtube/subtitles'),
+    { method: 'POST', body: JSON.stringify({ url, lang }) },
+  )
+
 /** Download a video/audio file through the backend (streams the bytes). */
 export const ytDownload = async (
   url: string,

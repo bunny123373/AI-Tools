@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -19,7 +19,7 @@ import {
   Video,
 } from 'lucide-react'
 import type { Settings, YtDurationItem, YtMode, YouTubeInfo } from '../types'
-import { fetchYtThumb, ytDownload, ytDuration, ytInfo, ytTitle, ytTranscript } from '../api'
+import { fetchYtThumb, ytDownload, ytDuration, ytInfo, ytSubtitles, ytTitle, ytTranscript } from '../api'
 
 const TABS: { mode: YtMode; label: string; icon: typeof Info }[] = [
   { mode: 'info', label: 'Video info', icon: Info },
@@ -77,6 +77,7 @@ export default function YoutubeTools({
   const [transcriptLabel, setTranscriptLabel] = useState('')
   const [titleResult, setTitleResult] = useState('')
   const [playlist, setPlaylist] = useState<{ items: YtDurationItem[]; totalLabel: string; truncated: boolean } | null>(null)
+  const [subBusy, setSubBusy] = useState(false)
 
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -152,12 +153,12 @@ export default function YoutubeTools({
     }
   }
 
-  const runDownload = async () => {
+  const runDownload = async (kind: 'audio' | 'video' = dlKind, quality: string = dlQuality) => {
     if (!url.trim() || busy) return
     setBusy(true)
     setErr('')
     try {
-      const { blob, name } = await ytDownload(url, dlKind, dlQuality)
+      const { blob, name } = await ytDownload(url, kind, quality)
       saveBlob(blob, name)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Download failed.')
@@ -166,12 +167,37 @@ export default function YoutubeTools({
     }
   }
 
+  // y2mate-style: in the Download tab, auto-fetch video info as soon as a
+  // link is pasted (debounced), so the thumbnail card with per-quality
+  // buttons appears by itself.
+  useEffect(() => {
+    if (mode !== 'download') return
+    if (!ytIdFromUrl(url)) return
+    const t = setTimeout(() => {
+      void runInfo()
+    }, 700)
+    return () => clearTimeout(t)
+  }, [url, mode])
+
   const saveThumb = async () => {
     if (!info) return
     try {
       saveBlob(await fetchYtThumb(info.url), `${info.id}.jpg`)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Thumbnail save failed.')
+    }
+  }
+
+  const runSubtitleSave = async () => {
+    if (!url.trim() || subBusy) return
+    setSubBusy(true)
+    try {
+      const r = await ytSubtitles(url, 'en')
+      saveBlob(new Blob([r.srt], { type: 'text/plain' }), `${r.id || 'captions'}.en.srt`)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Subtitle download failed.')
+    } finally {
+      setSubBusy(false)
     }
   }
 
@@ -234,6 +260,17 @@ export default function YoutubeTools({
                   Transcript{transcriptLabel ? ` · ${transcriptLabel}` : ''}
                   {transcript ? ` · ${transcript.split(/\s+/).length} words` : ''}
                 </span>
+                {transcript && (
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => void runSubtitleSave()}
+                    disabled={subBusy || !url.trim()}
+                    title="Download timed captions (.srt)"
+                  >
+                    {subBusy ? <Loader2 size={14} className="spin" /> : <FileText size={14} />} .srt
+                  </button>
+                )}
                 <CopyBtn text={transcript} />
               </div>
               {busy ? (
@@ -321,11 +358,14 @@ export default function YoutubeTools({
     }
 
     // download
+    const currentId = ytIdFromUrl(url)
+    const hasCard = !!info && !!currentId && info.id === currentId
     return (
       <>
         <p className="hint yt-note">
-          Downloads run on the <strong>server</strong> with Python (yt-dlp) — nothing to install
-          on your device. The first download may take up to a minute while the server sets yt-dlp up.
+          Paste a YouTube link — the thumbnail &amp; available qualities load automatically. Downloads
+          run on the <strong>server</strong> (yt-dlp), so nothing to install. The first download may
+          take up to a minute while the server preps.
         </p>
         <textarea
           className="tool-input yt-url"
@@ -334,14 +374,7 @@ export default function YoutubeTools({
           placeholder="Paste a YouTube link to download…"
           rows={2}
         />
-        <button
-          className="ghost"
-          onClick={() => void runInfo()}
-          disabled={busy || !url.trim()}
-        >
-          {busy ? <Loader2 size={14} className="spin" /> : <Info size={14} />} Load video — shows thumbnail &amp; qualities
-        </button>
-        {info && url && ytIdFromUrl(url) === info.id && (
+        {hasCard ? (
           <div className="yt-card yt-dl-preview">
             <img className="yt-thumb" src={info.thumbnail} alt={info.title} loading="lazy" />
             <div className="yt-facts">
@@ -350,54 +383,90 @@ export default function YoutubeTools({
               {info.durationSec !== null && info.durationSec !== undefined && (
                 <p className="yt-muted">Duration: {fmtSec(info.durationSec)}</p>
               )}
+              <div className="yt-quality-chips">
+                <button
+                  type="button"
+                  className="lang-chip active"
+                  onClick={() => void runDownload('video', 'best')}
+                  disabled={busy}
+                >
+                  <Download size={13} /> MP4 · Best
+                </button>
+                {(info.qualities ?? []).map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    className="lang-chip"
+                    onClick={() => void runDownload('video', `${h}p`)}
+                    disabled={busy}
+                  >
+                    <Video size={13} /> MP4 · {h}p
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="lang-chip"
+                  onClick={() => void runDownload('audio')}
+                  disabled={busy}
+                >
+                  <Music2 size={13} /> MP3 · 192 kbps
+                </button>
+              </div>
             </div>
           </div>
-        )}
-        <div className="yt-dl-choice">
-          <button
-            type="button"
-            className={`lang-chip ${dlKind === 'video' ? 'active' : ''}`}
-            onClick={() => setDlKind('video')}
-          >
-            <Video size={14} /> MP4 video
-          </button>
-          <button
-            type="button"
-            className={`lang-chip ${dlKind === 'audio' ? 'active' : ''}`}
-            onClick={() => setDlKind('audio')}
-          >
-            <Music2 size={14} /> MP3 audio (192 kbps)
-          </button>
-        </div>
-        {dlKind === 'video' && (
-          <div className="yt-dl-quality">
-            <span className="yt-muted">Quality</span>
-            <div className="yt-quality-chips">
+        ) : (
+          <>
+            <button className="ghost" onClick={() => void runInfo()} disabled={busy || !url.trim()}>
+              {busy ? <Loader2 size={14} className="spin" /> : <Info size={14} />}{' '}
+              {info ? 'Reload video info' : 'Fetch video info'}
+            </button>
+            <div className="yt-dl-choice">
               <button
                 type="button"
-                className={`lang-chip ${dlQuality === 'best' ? 'active' : ''}`}
-                onClick={() => setDlQuality('best')}
+                className={`lang-chip ${dlKind === 'video' ? 'active' : ''}`}
+                onClick={() => setDlKind('video')}
               >
-                Best
+                <Video size={14} /> MP4 video
               </button>
-              {(info?.qualities ?? []).map((h) => (
-                <button
-                  key={h}
-                  type="button"
-                  className={`lang-chip ${dlQuality === `${h}p` ? 'active' : ''}`}
-                  onClick={() => setDlQuality(`${h}p`)}
-                >
-                  {h}p
-                </button>
-              ))}
+              <button
+                type="button"
+                className={`lang-chip ${dlKind === 'audio' ? 'active' : ''}`}
+                onClick={() => setDlKind('audio')}
+              >
+                <Music2 size={14} /> MP3 audio (192 kbps)
+              </button>
             </div>
-            <p className="hint">Pick a quality, or Load video above to see what this video offers.</p>
-          </div>
+            {dlKind === 'video' && (
+              <div className="yt-dl-quality">
+                <span className="yt-muted">Quality</span>
+                <div className="yt-quality-chips">
+                  <button
+                    type="button"
+                    className={`lang-chip ${dlQuality === 'best' ? 'active' : ''}`}
+                    onClick={() => setDlQuality('best')}
+                  >
+                    Best
+                  </button>
+                  {(hasCard ? info.qualities : [])?.map((h) => (
+                    <button
+                      key={h}
+                      type="button"
+                      className={`lang-chip ${dlQuality === `${h}p` ? 'active' : ''}`}
+                      onClick={() => setDlQuality(`${h}p`)}
+                    >
+                      {h}p
+                    </button>
+                  ))}
+                </div>
+                <p className="hint">Pick a quality, or let the video info above load to see what this video offers.</p>
+              </div>
+            )}
+            <button className="primary" onClick={() => void runDownload()} disabled={busy || !url.trim()}>
+              {busy ? <Loader2 size={15} className="spin" /> : <Download size={15} />} Download
+            </button>
+          </>
         )}
-        <button className="primary" onClick={() => void runDownload()} disabled={busy || !url.trim()}>
-          {busy ? <Loader2 size={15} className="spin" /> : <Download size={15} />} Download
-        </button>
-        {busy && <p className="hint">Preparing your download… large files take a moment.</p>}
+        {busy && <p className="hint">{hasCard ? 'Preparing your download… large files take a moment.' : 'Working…'}</p>}
       </>
     )
   }

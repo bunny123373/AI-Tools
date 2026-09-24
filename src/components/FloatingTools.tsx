@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Bookmark,
   Brain,
@@ -14,6 +14,7 @@ import {
   MessageSquare,
   PenLine,
   Palette,
+  RotateCcw,
   ScanText,
   Scissors,
   Settings,
@@ -86,6 +87,38 @@ const GROUPS: Group[] = [
   },
 ]
 
+const FAB_SIZE = 56
+const POS_KEY = 'ai-toolbox-fab-pos'
+
+/** Clamp a saved position into the current viewport. */
+function clampPos(pos: { x: number; y: number }): { x: number; y: number } {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  return {
+    x: Math.min(Math.max(0, pos.x), Math.max(FAB_SIZE, vw - FAB_SIZE)),
+    y: Math.min(Math.max(0, pos.y), Math.max(FAB_SIZE, vh - FAB_SIZE)),
+  }
+}
+
+function loadPos(): { x: number; y: number } | null {
+  try {
+    const raw = localStorage.getItem(POS_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { x?: number; y?: number }
+    if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return null
+    return clampPos({ x: parsed.x, y: parsed.y })
+  } catch {
+    return null
+  }
+}
+
+interface DragState {
+  startX: number
+  startY: number
+  baseX: number
+  baseY: number
+}
+
 export default function FloatingTools({
   currentTab,
   onNavigate,
@@ -97,6 +130,14 @@ export default function FloatingTools({
   openSignal?: number
 }) {
   const [open, setOpen] = useState(false)
+  const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(loadPos)
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const posRef = useRef(fabPos)
+  const skipClick = useRef(false)
+
+  useEffect(() => {
+    posRef.current = fabPos
+  }, [fabPos])
 
   useEffect(() => {
     if (!open) return
@@ -111,32 +152,114 @@ export default function FloatingTools({
     if (typeof openSignal === 'number' && openSignal > 0) setOpen(true)
   }, [openSignal])
 
+  // Keep a saved position inside the viewport if the window is resized.
+  useEffect(() => {
+    const onResize = () => {
+      setFabPos((p) => (p ? clampPos(p) : p))
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   const pick = (t: FloatingTarget) => {
     setOpen(false)
     onNavigate(t)
   }
 
+  const resetPos = () => {
+    setFabPos(null)
+    try {
+      localStorage.removeItem(POS_KEY)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const onFabPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const base =
+      fabPos ?? { x: window.innerWidth - 22 - FAB_SIZE, y: window.innerHeight - 22 - FAB_SIZE }
+    setDrag({ startX: e.clientX, startY: e.clientY, baseX: base.x, baseY: base.y })
+  }
+
+  const onFabPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!drag) return
+    const { startX, startY, baseX, baseY } = drag
+    const next = clampPos({
+      x: baseX + (e.clientX - startX),
+      y: baseY + (e.clientY - startY),
+    })
+    setFabPos(next)
+    posRef.current = next
+  }
+
+  const onFabPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!drag) return
+    const moved = Math.abs(e.clientX - drag.startX) + Math.abs(e.clientY - drag.startY) > 6
+    setDrag(null)
+    skipClick.current = moved
+    if (moved && posRef.current) {
+      try {
+        localStorage.setItem(POS_KEY, JSON.stringify(posRef.current))
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  const fabStyle: React.CSSProperties | undefined = fabPos
+    ? { left: fabPos.x, top: fabPos.y, right: 'auto', bottom: 'auto' }
+    : undefined
+
+  const panelStyle = (): React.CSSProperties | undefined => {
+    if (!fabPos) return undefined
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const w = Math.min(360, vw - 44)
+    const h = Math.min(vh * 0.72, 620)
+    const left = Math.max(8, Math.min(fabPos.x, Math.max(8, vw - w - 8)))
+    let top = fabPos.y - h - 18
+    if (top < 8) top = fabPos.y + FAB_SIZE + 18
+    top = Math.min(Math.max(8, top), Math.max(8, vh - 8))
+    return { left, top, right: 'auto', bottom: 'auto', width: `${w}px` }
+  }
+
   let i = 0
 
   return (
-    <div className="floating-tools">
+    <div className={`floating-tools ${drag ? 'dragging' : ''}`}>
       {open && (
         <>
           <div className="ft-backdrop" onClick={() => setOpen(false)} />
-          <div className="ft-panel" role="dialog" aria-label="All tools">
+          <div className="ft-panel" role="dialog" aria-label="All tools" style={panelStyle()}>
             <div className="ft-head">
               <span className="ft-title">
                 <Sparkles size={15} />
                 All tools
               </span>
-              <button
-                type="button"
-                className="ft-close"
-                onClick={() => setOpen(false)}
-                aria-label="Close tools"
-              >
-                <X size={16} />
-              </button>
+              <div className="ft-head-actions">
+                {fabPos && (
+                  <button
+                    type="button"
+                    className="ft-close ft-reset"
+                    onClick={resetPos}
+                    aria-label="Reset tools position"
+                    title="Reset position"
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="ft-close"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close tools"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             <div className="ft-groups">
@@ -173,7 +296,18 @@ export default function FloatingTools({
       <button
         type="button"
         className={`ft-fab ${open ? 'open' : ''}`}
-        onClick={() => setOpen((v) => !v)}
+        style={fabStyle}
+        onPointerDown={onFabPointerDown}
+        onPointerMove={onFabPointerMove}
+        onPointerUp={onFabPointerUp}
+        onPointerCancel={() => setDrag(null)}
+        onClick={() => {
+          if (skipClick.current) {
+            skipClick.current = false
+            return
+          }
+          setOpen((v) => !v)
+        }}
         aria-label={open ? 'Close all tools' : 'Open all tools'}
         aria-expanded={open}
       >

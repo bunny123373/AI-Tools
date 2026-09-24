@@ -70,6 +70,7 @@ export default function YoutubeTools({
   const [url, setUrl] = useState('')
   const [goals, setGoals] = useState('')
   const [dlKind, setDlKind] = useState<'audio' | 'video'>('video')
+  const [dlQuality, setDlQuality] = useState('best')
 
   const [info, setInfo] = useState<YouTubeInfo | null>(null)
   const [transcript, setTranscript] = useState('')
@@ -156,7 +157,7 @@ export default function YoutubeTools({
     setBusy(true)
     setErr('')
     try {
-      const { blob, name } = await ytDownload(url, dlKind)
+      const { blob, name } = await ytDownload(url, dlKind, dlQuality)
       saveBlob(blob, name)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Download failed.')
@@ -333,22 +334,66 @@ export default function YoutubeTools({
           placeholder="Paste a YouTube link to download…"
           rows={2}
         />
+        <button
+          className="ghost"
+          onClick={() => void runInfo()}
+          disabled={busy || !url.trim()}
+        >
+          {busy ? <Loader2 size={14} className="spin" /> : <Info size={14} />} Load video — shows thumbnail &amp; qualities
+        </button>
+        {info && url && ytIdFromUrl(url) === info.id && (
+          <div className="yt-card yt-dl-preview">
+            <img className="yt-thumb" src={info.thumbnail} alt={info.title} loading="lazy" />
+            <div className="yt-facts">
+              <h3>{info.title}</h3>
+              {info.author && <p className="yt-muted">{info.author}</p>}
+              {info.durationSec !== null && info.durationSec !== undefined && (
+                <p className="yt-muted">Duration: {fmtSec(info.durationSec)}</p>
+              )}
+            </div>
+          </div>
+        )}
         <div className="yt-dl-choice">
           <button
             type="button"
             className={`lang-chip ${dlKind === 'video' ? 'active' : ''}`}
             onClick={() => setDlKind('video')}
           >
-            <Video size={14} /> MP4 video (≤1080p)
+            <Video size={14} /> MP4 video
           </button>
           <button
             type="button"
             className={`lang-chip ${dlKind === 'audio' ? 'active' : ''}`}
             onClick={() => setDlKind('audio')}
           >
-            <Music2 size={14} /> M4A audio
+            <Music2 size={14} /> MP3 audio (192 kbps)
           </button>
         </div>
+        {dlKind === 'video' && (
+          <div className="yt-dl-quality">
+            <span className="yt-muted">Quality</span>
+            <div className="yt-quality-chips">
+              <button
+                type="button"
+                className={`lang-chip ${dlQuality === 'best' ? 'active' : ''}`}
+                onClick={() => setDlQuality('best')}
+              >
+                Best
+              </button>
+              {(info?.qualities ?? []).map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  className={`lang-chip ${dlQuality === `${h}p` ? 'active' : ''}`}
+                  onClick={() => setDlQuality(`${h}p`)}
+                >
+                  {h}p
+                </button>
+              ))}
+            </div>
+            <p className="hint">Pick a quality, or Load video above to see what this video offers.</p>
+          </div>
+        )}
         <button className="primary" onClick={() => void runDownload()} disabled={busy || !url.trim()}>
           {busy ? <Loader2 size={15} className="spin" /> : <Download size={15} />} Download
         </button>
@@ -392,4 +437,13 @@ function fmtSec(sec: number): string {
   const mm = String(m).padStart(2, '0')
   const tss = String(ss).padStart(2, '0')
   return h > 0 ? `${h}:${mm}:${tss}` : `${m}:${tss}`
+}
+
+function ytIdFromUrl(u: string): string | null {
+  return (
+    u.match(/youtu\.be\/([\w-]{6,})/)?.[1] ||
+    u.match(/[?&]v=([\w-]{6,})/)?.[1] ||
+    u.match(/\/(?:shorts|embed|live)\/([\w-]{6,})/)?.[1] ||
+    null
+  )
 }

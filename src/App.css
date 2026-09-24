@@ -3977,6 +3977,23 @@ label {
   gap: 8px;
 }
 
+.yt-dl-preview {
+  margin-top: 10px;
+}
+
+.yt-dl-quality {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.yt-quality-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 @media (max-width: 640px) {
   .yt-card {
     flex-direction: column;

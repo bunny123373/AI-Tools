@@ -24,3 +24,5 @@ Thumbs.db
 # Python (Render backend)
 __pycache__/
 *.pyc
+# TypeScript incremental caches
+*.tsbuildinfo

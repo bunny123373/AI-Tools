@@ -86,6 +86,8 @@ export interface YouTubeInfo {
   author: string
   thumbnail: string
   durationSec: number | null
+  /** Distinct MP4 video heights, best first (quality picker). */
+  qualities?: number[]
 }
 
 /** One playlist row from /api/tools/youtube/duration. */

@@ -116,11 +116,12 @@ export const fetchYtThumb = async (videoUrl: string): Promise<Blob> => {
 export const ytDownload = async (
   url: string,
   kind: 'audio' | 'video',
+  quality = 'best',
 ): Promise<{ blob: Blob; name: string }> => {
   const res = await fetch(ytPath('/youtube/download', '/api/tools/youtube/download'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, kind }),
+    body: JSON.stringify({ url, kind, quality }),
   })
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string }
@@ -130,7 +131,7 @@ export const ytDownload = async (
   const m = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)
   if (m) return { blob, name: m[1] }
   const idMatch = url.match(/youtu\.be\/([\w-]+)/)?.[1] || 'video'
-  return { blob, name: `${idMatch}.${kind === 'audio' ? 'm4a' : 'mp4'}` }
+  return { blob, name: `${idMatch}.${kind === 'audio' ? 'mp3' : 'mp4'}` }
 }
 
 export const analyzeImage = (payload: Record<string, unknown>) =>

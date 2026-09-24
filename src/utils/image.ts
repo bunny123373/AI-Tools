@@ -1,6 +1,6 @@
 // Small client-side image helpers used by the Images page.
 
-export function readFileAsDataUrl(file: File): Promise<string> {
+export function readFileAsDataUrl(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader()
     r.onload = () => resolve(String(r.result))

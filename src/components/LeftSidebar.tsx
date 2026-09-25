@@ -30,7 +30,6 @@ const NAV: { label: string; tab: Tab; icon: LucideIcon }[] = [
 ]
 
 const PROVIDER_LABEL: Record<string, string> = {
-  ollama: 'Ollama (local)',
   openrouter: 'OpenRouter',
   gemini: 'Gemini',
 }

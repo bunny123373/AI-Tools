@@ -4,7 +4,6 @@ A completely free, full-stack AI tools suite. Chat, summarize, improve, translat
 
 - **Framework:** Next.js 16 (App Router) + React 19 + TypeScript — single app, UI + API in one server
 - **AI providers (all free):**
-  - 🦙 **Ollama** — runs locally on your PC, free forever, works offline
   - 🪙 **OpenRouter** — free `:free` models, $0 cost
   - 🌐 **Google Gemini** — generous free tier
   - ⚡ **xkiro** — free `:free` models via OpenAI-compatible gateway
@@ -38,14 +37,11 @@ npm run dev     # starts UI + API together on http://localhost:3001
 
 Open **http://localhost:3001**.
 
-### Option A — No API keys at all (recommended to start): use Ollama
+### Option A — Zero setup (recommended to start): OpenCode free allowance
 
-1. Install [Ollama](https://ollama.com)
-2. Pull a model:
-   ```bash
-   ollama pull llama3.2
-   ```
-3. Select **Ollama** as the provider in the app. Done — 100% free and offline.
+1. Open the app — **OpenCode** is the default provider with a prefilled free key.
+2. Pick **Space Bunny (free Zen model)** in the model picker.
+3. Send a message. Done — no account, no setup (free monthly allowance).
 
 ### Option B — OpenRouter free models
 
@@ -80,7 +76,7 @@ ai-toolbox/
 │   ├── views/               # Tab pages: Chat, Tools, Images, Prompts, Settings, UiPicker
 │   ├── components/          # ModelPicker, PdfTools
 │   ├── utils/               # image.ts (client-side image helpers)
-│   ├── providers.ts         # Ollama / OpenRouter / Gemini adapters (server)
+│   ├── providers.ts         # OpenRouter / Gemini / xkiro / OpenCode / Puter adapters (server)
 │   ├── api.ts               # API helpers, settings & prompts storage (client)
 │   └── types.ts
 ├── public/                  # Static assets (favicon, pdf.js worker)
@@ -103,7 +99,7 @@ browser's localStorage.
 | --- | --- | --- |
 | GET | `/api/health` | Server status |
 | GET | `/api/providers` | List of supported providers |
-| GET | `/api/models?provider=ollama` | Models for a provider |
+| GET | `/api/models?provider=opencode` | Models for a provider |
 | POST | `/api/chat` | Chat completion (`{ provider, model, messages }`) |
 | POST | `/api/tools/summarize` | Summarize `{ text }` |
 | POST | `/api/tools/improve` | Rewrite `{ text, style }` |
@@ -115,7 +111,7 @@ browser's localStorage.
 | POST | `/api/tools/web/article` | Article → AI summary `{ url, provider?, model? }` |
 | POST | `/api/tools/audio/transcribe` | Audio → text transcript (Gemini) `{ audioDataUrl }` |
 
-For tools and chat you can optionally pass `openrouterKey`, `geminiKey`, `ollamaBaseUrl` in the body.
+For tools and chat you can optionally pass `openrouterKey`, `geminiKey`, `xkiroKey`, `opencodeKey` in the body.
 
 ## ☁️ Deploy: frontend on Vercel
 
@@ -124,7 +120,7 @@ The app is a single Next.js app — chat, providers, images, web tools, PDFs, au
 Notes:
 
 - Generate `AUTH_SECRET` locally: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
-- **Ollama is local** — it can't reach your PC from Vercel serverless. Use xkiro / OpenRouter / Gemini / OpenCode keys (free tiers) for a public instance; users can also paste keys in Settings.
+- **Serverless can't reach your PC** — use xkiro / OpenRouter / Gemini / OpenCode keys (free tiers) for a public instance; users can also paste keys in Settings.
 - **Chat history & accounts** are stored in `.data/` on the server disk — ephemeral on Vercel serverless, so they reset on redeploy. Use a database for durable, public deployment.
 - **Tavily web search** stays a per-user key in Settings (no env var).
 - **YouTube tools retired** — the YouTube tools (info, transcript, titles, playlist, download, subtitles) were removed from the site. The `backend/` Flask + yt-dlp service (Render) is left in the repo, dormant, with its `/youtube/*` endpoints, PO-token anti-bot-wall setup and `YT_COOKIES_CONTENT` escape hatch intact should the tools ever return. It currently has **no frontend consumer** — safe to stop the service or keep it running idle.

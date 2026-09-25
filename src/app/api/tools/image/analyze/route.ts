@@ -17,13 +17,12 @@ export async function POST(req: Request) {
   }
   try {
     const { result, model, autoSwitched } = await analyzeImage({
-      provider: (body.provider as string) || 'ollama',
+      provider: (body.provider as string) || 'gemini',
       model: (body.model as string) || '',
       imageDataUrl,
       prompt: body.prompt ? String(body.prompt) : undefined,
       openrouterKey: body.openrouterKey ? String(body.openrouterKey) : undefined,
       geminiKey: body.geminiKey ? String(body.geminiKey) : undefined,
-      ollamaBaseUrl: body.ollamaBaseUrl ? String(body.ollamaBaseUrl) : undefined,
     })
     return NextResponse.json({ result, model, autoSwitched })
   } catch (e) {

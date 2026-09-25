@@ -59,14 +59,13 @@ ${meta.text}`
       { role: 'user', content: prompt },
     ]
     const result = await chat({
-      provider: (body.provider as string) || 'ollama',
+      provider: (body.provider as string) || 'opencode',
       model: (body.model as string) || '',
       messages,
       openrouterKey: body.openrouterKey ? String(body.openrouterKey) : undefined,
       geminiKey: body.geminiKey ? String(body.geminiKey) : undefined,
       xkiroKey: body.xkiroKey ? String(body.xkiroKey) : undefined,
       opencodeKey: body.opencodeKey ? String(body.opencodeKey) : undefined,
-      ollamaBaseUrl: body.ollamaBaseUrl ? String(body.ollamaBaseUrl) : undefined,
     })
     const { text: _text, ...preview } = meta
     return NextResponse.json({ result, meta: preview })

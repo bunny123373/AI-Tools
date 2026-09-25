@@ -12,7 +12,6 @@ interface Props {
 }
 
 const FALLBACK_PROVIDERS: ProviderInfo[] = [
-  { id: 'ollama', name: 'Ollama (local)', requiresKey: false, keyLabel: '', keyHint: '', free: '100% free & offline' },
   { id: 'openrouter', name: 'OpenRouter (free models)', requiresKey: true, keyLabel: 'OpenRouter API key', keyHint: '', free: 'Free models available' },
   { id: 'gemini', name: 'Google Gemini (free tier)', requiresKey: true, keyLabel: 'Gemini API key', keyHint: '', free: 'Has a free tier' },
   { id: 'xkiro', name: 'xkiro (free models)', requiresKey: true, keyLabel: 'xkiro API key', keyHint: '', free: 'Free models available (:free)' },

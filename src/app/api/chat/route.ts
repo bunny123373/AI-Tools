@@ -9,7 +9,7 @@ const TAVILY_URL = 'https://api.tavily.com/search'
 function parseChatBody(body: unknown): ChatRequest {
   if (!body || typeof body !== 'object') throw new Error('Invalid request body.')
   const b = body as Record<string, unknown>
-  const provider = String(b.provider || 'ollama')
+  const provider = String(b.provider || 'opencode')
   const rawMessages: ChatMessage[] = Array.isArray(b.messages) ? (b.messages as ChatMessage[]) : []
   if (!rawMessages.length) throw new Error('No messages provided.')
   for (const m of rawMessages) {
@@ -30,7 +30,6 @@ function parseChatBody(body: unknown): ChatRequest {
     xkiroKey: b.xkiroKey ? String(b.xkiroKey) : undefined,
     opencodeKey: b.opencodeKey ? String(b.opencodeKey) : undefined,
     webSearchKey: b.webSearchKey ? String(b.webSearchKey) : undefined,
-    ollamaBaseUrl: b.ollamaBaseUrl ? String(b.ollamaBaseUrl) : undefined,
   }
 }
 

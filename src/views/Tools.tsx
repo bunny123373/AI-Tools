@@ -52,7 +52,6 @@ export default function Tools({
         geminiKey: settings.geminiKey || undefined,
         xkiroKey: settings.xkiroKey || undefined,
         opencodeKey: settings.opencodeKey || undefined,
-        ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
       }
       if (kind === 'improve') payload.style = style
       if (kind === 'translate') payload.language = language

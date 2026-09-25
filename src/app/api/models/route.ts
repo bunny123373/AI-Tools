@@ -4,7 +4,7 @@ import { listModels } from '@/providers'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const provider = String(req.nextUrl.searchParams.get('provider') || 'ollama')
+  const provider = String(req.nextUrl.searchParams.get('provider') || 'opencode')
   const xkiroKey = req.nextUrl.searchParams.get('key') || undefined
   try {
     return NextResponse.json(await listModels(provider, { xkiroKey }))

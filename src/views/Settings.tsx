@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bot, Check, Coins, Globe, Info, Search, ShieldCheck, Sparkles } from 'lucide-react'
+import { Check, Coins, Globe, Info, Search, ShieldCheck, Sparkles } from 'lucide-react'
 import type { ProviderInfo, Settings } from '../types'
 import { fetchProviders, loadSettings, saveSettings } from '../api'
 
@@ -32,19 +32,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="settings-grid">
-        <div className="card">
-          <h2><Bot size={18} /> Ollama — fully local & free</h2>
-          <p className="hint">Install once from <a href="https://ollama.com" target="_blank" rel="noreferrer">ollama.com</a>, then pull a model like <code>ollama pull llama3.2</code>. Works offline, no account.</p>
-          <label>
-            <span>Ollama server URL</span>
-            <input
-              value={settings.ollamaBaseUrl}
-              onChange={(e) => update({ ...settings, ollamaBaseUrl: e.target.value })}
-              placeholder="http://localhost:11434"
-            />
-          </label>
-        </div>
-
         <div className="card">
           <h2><Coins size={18} /> OpenRouter — free models</h2>
           <p className="hint">Free key at <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai/keys</a>. Models ending in <code>:free</code> cost $0.</p>

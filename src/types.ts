@@ -46,7 +46,6 @@ export interface Settings {
   xkiroKey: string
   opencodeKey: string
   webSearchKey: string
-  ollamaBaseUrl: string
 }
 
 export interface PromptItem {
@@ -66,7 +65,6 @@ export interface ChatPayload {
   xkiroKey?: string
   opencodeKey?: string
   webSearchKey?: string
-  ollamaBaseUrl?: string
 }
 
 export interface SearchSource {
@@ -123,5 +121,4 @@ export interface ChatRequest {
   xkiroKey?: string
   opencodeKey?: string
   webSearchKey?: string
-  ollamaBaseUrl?: string
 }

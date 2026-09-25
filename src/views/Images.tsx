@@ -416,7 +416,6 @@ function AnalyzeMode({ settings, initialFile }: { settings: Settings; initialFil
         prompt: prompt.trim() || undefined,
         openrouterKey: settings.openrouterKey || undefined,
         geminiKey: settings.geminiKey || undefined,
-        ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
       })
       setResult(r)
     } catch (e) {
@@ -450,8 +449,8 @@ function AnalyzeMode({ settings, initialFile }: { settings: Settings; initialFil
         <Brain size={15} /> {busy ? 'Analyzing…' : 'Analyze image'}
       </button>
       <p className="hint">
-        Uses your selected model. Ollama: pick a vision model (<code>ollama pull llava</code>). OpenRouter free: the
-        Vision model in the list. Gemini: any model handles images.
+        Uses your selected model. OpenRouter: pick a Vision model from the list. Gemini: any model handles images.
+        OpenCode (Space Bunny) is chat-only.
       </p>
       {error && <p className="hint warn">{error}</p>}
       {result && (

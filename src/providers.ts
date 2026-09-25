@@ -1,16 +1,6 @@
 import type { ChatMessage, ChatRequest, ModelChoice, ModelListResult, ProviderInfo } from './types'
 
-export const OLLAMA_DEFAULT = 'http://localhost:11434'
-
 export const PROVIDERS: ProviderInfo[] = [
-  {
-    id: 'ollama',
-    name: 'Ollama (local)',
-    requiresKey: false,
-    keyLabel: '',
-    keyHint: 'Runs fully on your PC — free forever and offline. Install from https://ollama.com',
-    free: '100% free & offline',
-  },
   {
     id: 'openrouter',
     name: 'OpenRouter (free models)',
@@ -61,7 +51,6 @@ export const PROVIDERS: ProviderInfo[] = [
  * model can't see it (auto-switch).
  */
 export const MODEL_DEFAULTS: Record<string, { chat: string; vision: string; visionLabel?: string }> = {
-  ollama: { chat: 'llama3.2', vision: 'llava', visionLabel: 'Llava (vision)' },
   openrouter: {
     chat: 'inclusionai/ling-3.0-flash-vl:free',
     vision: 'inclusionai/ling-3.0-flash-vl:free',
@@ -80,9 +69,6 @@ export const MODEL_DEFAULTS: Record<string, { chat: string; vision: string; visi
 /** Does this provider+model combination accept images for analysis? */
 export function isVisionCapable(provider: string, model: string): boolean {
   const id = (model || '').toLowerCase()
-  if (provider === 'ollama') {
-    return /(llava|moondream|bakllava|minicpm|vision)/.test(id)
-  }
   // Gemini (and every Puter model) is multimodal — all models see images.
   if (provider === 'gemini' || provider === 'puter') return true
   // OpenAI-compatible gateways: any model marked vision/omni/vl/llava works.
@@ -116,16 +102,6 @@ export function resolveVisionModel(provider: string, model?: string): ResolvedVi
 }
 
 const STATIC_MODELS: Record<string, ModelChoice[]> = {
-  ollama: [
-    { id: 'llama3.2', name: 'Llama 3.2 (default)', provider: 'ollama' },
-    { id: 'llama3.1', name: 'Llama 3.1', provider: 'ollama' },
-    { id: 'mistral', name: 'Mistral', provider: 'ollama' },
-    { id: 'phi3', name: 'Phi-3 Mini', provider: 'ollama' },
-    { id: 'gemma2', name: 'Gemma 2', provider: 'ollama' },
-    { id: 'qwen2.5', name: 'Qwen 2.5', provider: 'ollama' },
-    { id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'ollama' },
-    { id: 'llava', name: 'Llava (vision, for image analysis)', provider: 'ollama' },
-  ],
   openrouter: [
     { id: 'inclusionai/ling-3.0-flash-vl:free', name: 'Ling 3.0 Flash VL (free)', provider: 'openrouter', free: true },
     { id: 'inclusionai/ling-3.0-flash-sante:free', name: 'Ling 3.0 Flash Sante (free)', provider: 'openrouter', free: true },
@@ -175,10 +151,6 @@ async function fetchJson(url: string, init?: RequestInit): Promise<any> {
     throw new Error(String(detail))
   }
   return data
-}
-
-function ollamaBase(opts: Partial<ChatRequest> = {}): string {
-  return (opts.ollamaBaseUrl || process.env.OLLAMA_BASE_URL || OLLAMA_DEFAULT).replace(/\/$/, '')
 }
 
 // ---- Puter (https://puter.com) ----
@@ -239,25 +211,6 @@ function puterFriendlyError(e: unknown): string {
 }
 
 export async function listModels(provider: string, opts: Partial<ChatRequest> = {}): Promise<ModelListResult> {
-  const base = ollamaBase(opts)
-
-  if (provider === 'ollama') {
-    try {
-      const data = await fetchJson(`${base}/api/tags`)
-      const models: ModelChoice[] = (data.models || []).map((m: any) => ({
-        id: m.name,
-        name: `${m.name}${m.details?.parameter_size ? ` (${m.details.parameter_size})` : ''}`,
-        provider: 'ollama',
-      }))
-      return { models: models.length ? models : STATIC_MODELS.ollama }
-    } catch (e) {
-      return {
-        models: STATIC_MODELS.ollama,
-        note: friendlyError(e, `Could not reach Ollama at ${base}. Start it with \`ollama serve\` and pull a model, e.g. \`ollama pull llama3.2\`.`),
-      }
-    }
-  }
-
   if (provider === 'openrouter') {
     const key = opts.openrouterKey || process.env.OPENROUTER_API_KEY || ''
     if (!key) {
@@ -384,26 +337,8 @@ function toGeminiContents(messages: ChatMessage[]): { contents: any[]; system?: 
 
 export async function chat(opts: ChatRequest): Promise<string> {
   const { provider, messages, openrouterKey, geminiKey, xkiroKey, opencodeKey } = opts
-  const base = ollamaBase(opts)
   // "auto" / empty model names resolve to the provider's default model.
   const model = resolveChatModel(provider, opts.model)
-
-  if (provider === 'ollama') {
-    try {
-      const data = await fetchJson(`${base}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, messages, stream: false }),
-      })
-      const reply = data?.message?.content
-      if (!reply) throw new Error('Ollama returned an empty reply.')
-      return reply
-    } catch (e) {
-      throw new Error(
-        friendlyError(e, `Could not reach Ollama at ${base}. Start it with \`ollama serve\` and pull the model, e.g. \`ollama pull ${model || 'llama3.2'}\`.`),
-      )
-    }
-  }
 
   if (provider === 'openrouter') {
     const key = openrouterKey || process.env.OPENROUTER_API_KEY || ''
@@ -508,7 +443,6 @@ export interface AnalyzeImageOpts {
   prompt?: string
   openrouterKey?: string
   geminiKey?: string
-  ollamaBaseUrl?: string
 }
 
 export interface AnalyzeImageResult {
@@ -521,7 +455,6 @@ export interface AnalyzeImageResult {
 
 export async function analyzeImage(opts: AnalyzeImageOpts): Promise<AnalyzeImageResult> {
   const { provider, imageDataUrl, openrouterKey, geminiKey } = opts
-  const base = ollamaBase(opts)
   const prompt = opts.prompt?.trim() || 'Describe this image in detail.'
   const b64 = imageDataUrl.split(',')[1] || ''
   if (!b64) throw new Error('Invalid image data URL.')
@@ -530,28 +463,8 @@ export async function analyzeImage(opts: AnalyzeImageOpts): Promise<AnalyzeImage
   // images, otherwise switch to the provider's vision default.
   const { model, autoSwitched } = resolveVisionModel(provider, opts.model)
 
-  if (provider === 'ollama') {
-    try {
-      const data = await fetchJson(`${base}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: prompt, images: [b64] }],
-          stream: false,
-        }),
-      })
-      const reply = data?.message?.content
-      if (!reply) throw new Error('Ollama returned an empty reply.')
-      return { result: reply, model, autoSwitched }
-    } catch (e) {
-      throw new Error(
-        friendlyError(
-          e,
-          `Could not reach Ollama at ${base}. For image analysis install a vision model: \`ollama pull llava\`.`,
-        ),
-      )
-    }
+  if (provider === 'opencode') {
+    throw new Error('OpenCode (space-bunny-free) is chat-only. Switch to Gemini or OpenRouter to analyze images.')
   }
 
   if (provider === 'openrouter') {

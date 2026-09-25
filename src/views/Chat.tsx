@@ -192,7 +192,6 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
           prompt: text || undefined,
           openrouterKey: settings.openrouterKey || undefined,
           geminiKey: settings.geminiKey || undefined,
-          ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
         })
         const usedModel = res.autoSwitched ? `switched to ${res.model} (vision)` : res.model
         await finish([...next, { role: 'assistant', content: res.result, usedModel }])
@@ -208,7 +207,6 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
           xkiroKey: settings.xkiroKey || undefined,
           opencodeKey: settings.opencodeKey || undefined,
           webSearchKey: settings.webSearchKey || undefined,
-          ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
         })
         const final: ChatMessage[] = [...next, { role: 'assistant', content: reply }]
         setMessages(final)

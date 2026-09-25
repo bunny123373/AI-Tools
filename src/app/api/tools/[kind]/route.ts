@@ -55,14 +55,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ kind: s
   ]
   try {
     const result = await chat({
-      provider: (body.provider as string) || 'ollama',
+      provider: (body.provider as string) || 'opencode',
       model: (body.model as string) || '',
       messages,
       openrouterKey: body.openrouterKey ? String(body.openrouterKey) : undefined,
       geminiKey: body.geminiKey ? String(body.geminiKey) : undefined,
       xkiroKey: body.xkiroKey ? String(body.xkiroKey) : undefined,
       opencodeKey: body.opencodeKey ? String(body.opencodeKey) : undefined,
-      ollamaBaseUrl: body.ollamaBaseUrl ? String(body.ollamaBaseUrl) : undefined,
     })
     return NextResponse.json({ result })
   } catch (e) {

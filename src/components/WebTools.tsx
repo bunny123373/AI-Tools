@@ -94,7 +94,6 @@ export default function WebTools({ settings, initialMode }: Props) {
         geminiKey: settings.geminiKey || undefined,
         xkiroKey: settings.xkiroKey || undefined,
         opencodeKey: settings.opencodeKey || undefined,
-        ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
       })
       setPreview(r.meta)
       setResult(r.result)

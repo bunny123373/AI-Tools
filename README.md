@@ -108,29 +108,20 @@ browser's localStorage.
 | POST | `/api/tools/proofread` | Proofread `{ text }` |
 | POST | `/api/tools/image/analyze` | Analyze an image `{ imageDataUrl, prompt? }` |
 | POST | `/api/tools/image/generate` | Generate an image `{ prompt, width?, height?, model? }` (streams PNG/JPEG) |
+| POST | `/api/tools/web/fetch` | Link preview `{ url }` — title, image, description |
+| POST | `/api/tools/web/article` | Article → AI summary `{ url, provider?, model? }` |
+| POST | `/api/tools/audio/transcribe` | Audio → text transcript (Gemini) `{ audioDataUrl }` |
 
 For tools and chat you can optionally pass `openrouterKey`, `geminiKey`, `ollamaBaseUrl` in the body.
 
-## ☁️ Deploy: frontend on Vercel + YouTube backend on Render
+## ☁️ Deploy: frontend on Vercel
 
-The app splits cleanly:
-
-- **Frontend (Vercel)** — this Next.js app. Chat, providers, images, auth, prompt library. Import the repo on vercel.com; it detects Next automatically. Env vars: `AUTH_SECRET` (required), `AUTH_TRUST_HOST=true`, plus optional `XKIRO_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `PUTER_AUTH_TOKEN`, `AUTH_GOOGLE_ID/SECRET`, `AUTH_GITHUB_ID/SECRET`.
-- **Backend (Render)** — the YouTube tools (`backend/`, Python **Flask** + **yt-dlp** with **ffmpeg** for merging MP4 video/audio and extracting M4A audio). Deploy with `backend/render.yaml` (Docker, free tier), or render.com/new → connect the repo → the `ai-toolbox-youtube-api` service. Health check: `/health`. No API keys needed.
-
-Wire them together with one env var on Vercel:
-
-```bash
-NEXT_PUBLIC_YT_API_URL=https://ai-toolbox-youtube-api.onrender.com
-```
-
-When set, the YouTube tools (info, transcript, playlist total, thumbnail, download) call the Render backend. When it's **not** set, everything falls back to the in-app `/api/tools/youtube/*` routes — so local dev keeps working with no changes.
+The app is a single Next.js app — chat, providers, images, web tools, PDFs, audio transcription, auth, prompt library. Import the repo on vercel.com; it detects Next automatically. Env vars: `AUTH_SECRET` (required), `AUTH_TRUST_HOST=true`, plus optional `XKIRO_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `PUTER_AUTH_TOKEN`, `AUTH_GOOGLE_ID/SECRET`, `AUTH_GITHUB_ID/SECRET`.
 
 Notes:
 
 - Generate `AUTH_SECRET` locally: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
-- **Ollama is local** — it can't reach your PC from Vercel serverless or Render. Use xkiro / OpenRouter / Gemini keys (free tiers) for a public instance; users can also paste keys in Settings.
-- **Chat history & accounts** are stored in `.data/` on the server disk — ephemeral on Vercel serverless and Render free instances, so they reset on redeploy. Use a database for durable, public deployment.
+- **Ollama is local** — it can't reach your PC from Vercel serverless. Use xkiro / OpenRouter / Gemini keys (free tiers) for a public instance; users can also paste keys in Settings.
+- **Chat history & accounts** are stored in `.data/` on the server disk — ephemeral on Vercel serverless, so they reset on redeploy. Use a database for durable, public deployment.
 - **Tavily web search** stays a per-user key in Settings (no env var).
-- **YouTube bot-wall**: cloud IPs often get *"Sign in to confirm you're not a bot"*. The backend chains five defenses: non-web player clients (`tv`, `ios`, `web_safari`, `android`), chrome TLS impersonation (`curl-cffi`), an EU `Accept-Language`, per-video **proof-of-origin tokens** (the `bgutil-ytdlp-pot-provider` plugin + the bgutil Node script baked into the Docker image — minted automatically for every request), and finally optional operator cookies. If YouTube still blocks, export your browser cookies and set **`YT_COOKIES_CONTENT`** on Render (Env tab → paste the whole Netscape `cookies.txt` → Save → redeploy). `YT_COOKIES` (path to a cookies.txt in the image) also works. Cookies are credentials — never commit them to the repo. Optional tunables: `YT_BGUTIL_HOME` (provider path, defaults to the baked-in one) and `YT_TOKEN_TTL` (token cache hours, default 6).
-- The Render backend opens its endpoints with permissive CORS because the frontend lives on a different origin.
+- **YouTube tools retired** — the YouTube tools (info, transcript, titles, playlist, download, subtitles) were removed from the site. The `backend/` Flask + yt-dlp service (Render) is left in the repo, dormant, with its `/youtube/*` endpoints, PO-token anti-bot-wall setup and `YT_COOKIES_CONTENT` escape hatch intact should the tools ever return. It currently has **no frontend consumer** — safe to stop the service or keep it running idle.

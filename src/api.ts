@@ -1,4 +1,4 @@
-import type { ChatPayload, HistoryChat, HistorySummary, ModelListResult, ProviderInfo, SearchSource, Settings, ToolKind, YtDurationItem, YouTubeInfo } from './types'
+import type { ChatPayload, HistoryChat, HistorySummary, ModelListResult, ProviderInfo, SearchSource, Settings, ToolKind, WebArticle, WebUnfurl } from './types'
 
 const SETTINGS_KEY = 'ai-toolbox-settings'
 
@@ -69,80 +69,33 @@ export const runTool = (kind: ToolKind, payload: Record<string, unknown>) =>
     body: JSON.stringify(payload),
   })
 
-// ---- YouTube tools ----
-// The YouTube APIs live in the repo's backend/ service (Render). When
-// NEXT_PUBLIC_YT_API_URL is set (Vercel/cloud), the client calls the remote
-// backend; otherwise it falls back to the same-origin Next routes (local dev).
 
-const YT_BASE = (process.env.NEXT_PUBLIC_YT_API_URL || '').replace(/\/+$/, '')
-const ytPath = (remote: string, local: string) => (YT_BASE ? `${YT_BASE}${remote}` : local)
 
-export const ytInfo = (url: string) =>
-  api<YouTubeInfo>(ytPath('/youtube/info', '/api/tools/youtube/info'), {
-    method: 'POST',
-    body: JSON.stringify({ url }),
-  })
-
-export const ytTranscript = (url: string) =>
-  api<{ transcript: string; lang: string; label: string }>(
-    ytPath('/youtube/transcript', '/api/tools/youtube/transcript'),
-    {
-      method: 'POST',
-      body: JSON.stringify({ url }),
-    },
-  )
-
-// AI title/description/tags runs on the app server (it needs provider keys).
-export const ytTitle = (payload: Record<string, unknown>) =>
-  api<{ result: string; info: YouTubeInfo }>('/api/tools/youtube/title', {
+export const analyzeImage = (payload: Record<string, unknown>) =>
+  api<{ result: string; model?: string; autoSwitched?: boolean }>('/api/tools/image/analyze', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 
-export const ytDuration = (urls: string) =>
-  api<{ items: YtDurationItem[]; totalSec: number; totalLabel: string; truncated: boolean }>(
-    ytPath('/youtube/duration', '/api/tools/youtube/duration'),
-    { method: 'POST', body: JSON.stringify({ urls }) },
-  )
+// ---- Web tools (link preview + article summary) ----
 
-/** Thumbnail bytes (client saves them locally — avoids CORS via the server). */
-export const fetchYtThumb = async (videoUrl: string): Promise<Blob> => {
-  const res = await fetch(`${ytPath('/youtube/thumb', '/api/tools/youtube/thumb')}?url=${encodeURIComponent(videoUrl)}`)
-  if (!res.ok) throw new Error('Could not fetch the thumbnail.')
-  return res.blob()
-}
-
-/** Timed captions as SRT text (manual subs preferred, auto-generated fallback). */
-export const ytSubtitles = (url: string, lang = 'en') =>
-  api<{ srt: string; lang: string; label: string; id: string }>(
-    ytPath('/youtube/subtitles', '/api/tools/youtube/subtitles'),
-    { method: 'POST', body: JSON.stringify({ url, lang }) },
-  )
-
-/** Download a video/audio file through the backend (streams the bytes). */
-export const ytDownload = async (
-  url: string,
-  kind: 'audio' | 'video',
-  quality = 'best',
-): Promise<{ blob: Blob; name: string }> => {
-  const res = await fetch(ytPath('/youtube/download', '/api/tools/youtube/download'), {
+/** Fetch any URL server-side and return preview metadata. */
+export const unfurl = (url: string) =>
+  api<WebUnfurl>('/api/tools/web/fetch', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, kind, quality }),
+    body: JSON.stringify({ url }),
   })
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new Error(data.error || 'Download failed.')
-  }
-  const blob = await res.blob()
-  const m = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)
-  if (m) return { blob, name: m[1] }
-  const idMatch = url.match(/youtu\.be\/([\w-]+)/)?.[1] || 'video'
-  return { blob, name: `${idMatch}.${kind === 'audio' ? 'mp3' : 'mp4'}` }
-}
 
-export const analyzeImage = (payload: Record<string, unknown>) =>
-  api<{ result: string; model?: string; autoSwitched?: boolean }>('/api/tools/image/analyze', {
+/** Fetch an article URL and summarize it with the selected AI provider. */
+export const articleSummary = (payload: Record<string, unknown>) =>
+  api<WebArticle>('/api/tools/web/article', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+
+/** Upload audio → text transcript via Gemini. */
+export const transcribeAudio = (payload: Record<string, unknown>) =>
+  api<{ result: string; model?: string }>('/api/tools/audio/transcribe', {
     method: 'POST',
     body: JSON.stringify(payload),
   })

@@ -73,30 +73,25 @@ export interface SearchSource {
   snippet: string
 }
 
-export type ToolKind = 'summarize' | 'improve' | 'translate' | 'proofread' | 'pdf' | 'youtube'
+export type ToolKind = 'summarize' | 'improve' | 'translate' | 'proofread' | 'pdf' | 'web' | 'transcribe'
 
-/** YouTube tools sub-modes (inside the Tools tab). */
-export type YtMode = 'info' | 'transcript' | 'title' | 'playlist' | 'download'
+/** Web tools sub-modes (inside the Tools tab). */
+export type WebMode = 'preview' | 'article'
 
-/** Video metadata returned by /api/tools/youtube/info. */
-export interface YouTubeInfo {
-  id: string
+/** Link preview metadata from /api/tools/web/fetch. */
+export interface WebUnfurl {
   url: string
   title: string
-  author: string
-  thumbnail: string
-  durationSec: number | null
-  /** Distinct MP4 video heights, best first (quality picker). */
-  qualities?: number[]
+  description: string
+  image: string
+  siteName: string
+  ok: boolean
 }
 
-/** One playlist row from /api/tools/youtube/duration. */
-export interface YtDurationItem {
-  url: string
-  id: string | null
-  title?: string
-  durationSec: number | null
-  error?: string
+/** Article summary result from /api/tools/web/article. */
+export interface WebArticle {
+  result: string
+  meta: WebUnfurl
 }
 
 export interface HistorySummary {

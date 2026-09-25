@@ -35,12 +35,9 @@ export const TOOL_INDEX: ToolEntry[] = [
   { label: 'Convert Image', hint: 'Resize, rotate, format', target: { tab: 'images', imageMode: 'convert' } },
   { label: 'Palette', hint: 'Extract colors', target: { tab: 'images', imageMode: 'palette' } },
   { label: 'Remove BG', hint: 'Local background removal', target: { tab: 'images', imageMode: 'removebg' } },
-  { label: 'YouTube tools', hint: 'Info, transcript, titles, playlist, download', target: { tab: 'tools', tool: 'youtube' } },
-  { label: 'YouTube: Video info', hint: 'Title, channel, thumbnail, duration', target: { tab: 'tools', tool: 'youtube', yt: 'info' } },
-  { label: 'YouTube: Transcript', hint: 'Pull captions from a video', target: { tab: 'tools', tool: 'youtube', yt: 'transcript' } },
-  { label: 'YouTube: Title pack', hint: 'AI titles, description & tags', target: { tab: 'tools', tool: 'youtube', yt: 'title' } },
-  { label: 'YouTube: Playlist total', hint: 'Total runtime of a list of videos', target: { tab: 'tools', tool: 'youtube', yt: 'playlist' } },
-  { label: 'YouTube: Download', hint: 'Save video (MP4) or audio (M4A)', target: { tab: 'tools', tool: 'youtube', yt: 'download' } },
+  { label: 'Link preview', hint: 'Preview any URL — title, image, description', target: { tab: 'tools', tool: 'web', web: 'preview' } },
+  { label: 'Article summary', hint: 'AI summary from an article link', target: { tab: 'tools', tool: 'web', web: 'article' } },
+  { label: 'Transcribe audio', hint: 'Upload audio → text transcript via Gemini', target: { tab: 'tools', tool: 'transcribe' } },
 ]
 
 /** Chat welcome — four suggestion cards. */

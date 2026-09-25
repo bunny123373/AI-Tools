@@ -46,6 +46,12 @@ export default function QuickTools({ className, onNavigate, onSeed, onMore, onFo
     { label: 'Translate', icon: Languages, action: () => onNavigate({ tab: 'tools', tool: 'translate' }) },
     { label: 'PDF Tools', icon: FileStack, action: () => onNavigate({ tab: 'tools', tool: 'pdf' }) },
     {
+      label: 'Link Preview',
+      icon: Globe,
+      accent: 'cyan',
+      action: () => onNavigate({ tab: 'tools', tool: 'web', web: 'preview' }),
+    },
+    {
       label: 'YouTube Ideas',
       icon: Clapperboard,
       accent: 'purple',

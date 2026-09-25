@@ -1,31 +1,39 @@
 import { NextResponse } from 'next/server'
 import type { ChatMessage } from '@/types'
 import { chat } from '@/providers'
-import { fetchYouTubeInfo } from '@/lib/youtube'
+import { unfurlUrl } from '@/lib/unfurl'
 
 export const dynamic = 'force-dynamic'
 
+/** Article → AI summary: read the page server-side, summarize with the chosen provider. */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
   const url = String(body.url || '').trim()
-  const goals = String(body.goals || '').trim()
   if (!url) return NextResponse.json({ error: 'Missing "url".' }, { status: 400 })
   try {
-    const info = await fetchYouTubeInfo(url)
-    const prompt = `Create a complete YouTube video package for the video "${info.title}"${
-      info.author ? ` by ${info.author}` : ''
-    }.${goals ? ` Creator goals/notes: ${goals}.` : ''}
+    const meta = await unfurlUrl(url)
+    if (!meta.text) {
+      return NextResponse.json(
+        { error: 'No readable text found on that page — it may block automatic fetches.' },
+        { status: 422 },
+      )
+    }
+    const prompt = `Summarize the article below. Use this structure:
+1. TL;DR — one or two sentences
+2. Key points — 4-6 bullets
+3. Takeaway — one sentence on why it matters
 
-Return exactly four sections:
-1. TITLES — 5 click-worthy titles, each under 55 characters
-2. DESCRIPTION — one friendly intro paragraph plus bullet points of what the viewer learns (~150 words max)
-3. TAGS — 10 keywords separated by commas
-4. HASHTAGS — 5 hashtags`
+TITLE: ${meta.title}
+${meta.description ? `DESCRIPTION: ${meta.description}\n` : ''}
+SOURCE: ${meta.siteName}
+
+ARTICLE:
+${meta.text}`
     const messages: ChatMessage[] = [
       {
         role: 'system',
         content:
-          'You are a YouTube SEO and content expert. Return clean, production-ready text with the four labeled sections. Keep the language of the video title unless the user asks otherwise.',
+          'You are a precise summarizer. Stay faithful to the article, do not invent facts, and keep the response under 300 words.',
       },
       { role: 'user', content: prompt },
     ]
@@ -38,10 +46,11 @@ Return exactly four sections:
       xkiroKey: body.xkiroKey ? String(body.xkiroKey) : undefined,
       ollamaBaseUrl: body.ollamaBaseUrl ? String(body.ollamaBaseUrl) : undefined,
     })
-    return NextResponse.json({ result, info })
+    const { text: _text, ...preview } = meta
+    return NextResponse.json({ result, meta: preview })
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'AI request failed.' },
+      { error: e instanceof Error ? e.message : 'Could not summarize the page.' },
       { status: 502 },
     )
   }

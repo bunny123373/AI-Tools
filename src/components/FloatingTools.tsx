@@ -8,10 +8,12 @@ import {
   FileImage,
   FileStack,
   FileText,
+  Globe,
   ImageDown,
   Languages,
   LayoutGrid,
   MessageSquare,
+  Mic,
   PenLine,
   Palette,
   RotateCcw,
@@ -24,13 +26,13 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import type { ToolKind, YtMode } from '../types'
+import type { ToolKind, WebMode } from '../types'
 
 export type FloatingTarget = {
   tab: 'chat' | 'tools' | 'images' | 'prompts' | 'ui' | 'settings'
   tool?: ToolKind
   pdf?: 'word' | 'text' | 'images' | 'merge' | 'split'
-  yt?: YtMode
+  web?: WebMode
   imageMode?: 'generate' | 'analyze' | 'ocr' | 'convert' | 'palette' | 'removebg'
 }
 
@@ -53,6 +55,7 @@ const GROUPS: Group[] = [
       { label: 'Improve', icon: PenLine, target: { tab: 'tools', tool: 'improve' } },
       { label: 'Translate', icon: Languages, target: { tab: 'tools', tool: 'translate' } },
       { label: 'Proofread', icon: CheckCheck, target: { tab: 'tools', tool: 'proofread' } },
+      { label: 'Transcribe audio', icon: Mic, target: { tab: 'tools', tool: 'transcribe' } },
     ],
   },
   {
@@ -63,6 +66,13 @@ const GROUPS: Group[] = [
       { label: 'PDF → Images', icon: FileImage, target: { tab: 'tools', tool: 'pdf', pdf: 'images' } },
       { label: 'Merge PDFs', icon: FileStack, target: { tab: 'tools', tool: 'pdf', pdf: 'merge' } },
       { label: 'Split PDF', icon: Scissors, target: { tab: 'tools', tool: 'pdf', pdf: 'split' } },
+    ],
+  },
+  {
+    label: 'Web',
+    items: [
+      { label: 'Link preview', icon: Globe, target: { tab: 'tools', tool: 'web', web: 'preview' } },
+      { label: 'Article summary', icon: FileText, target: { tab: 'tools', tool: 'web', web: 'article' } },
     ],
   },
   {

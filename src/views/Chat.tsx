@@ -206,6 +206,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
           openrouterKey: settings.openrouterKey || undefined,
           geminiKey: settings.geminiKey || undefined,
           xkiroKey: settings.xkiroKey || undefined,
+          opencodeKey: settings.opencodeKey || undefined,
           webSearchKey: settings.webSearchKey || undefined,
           ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
         })

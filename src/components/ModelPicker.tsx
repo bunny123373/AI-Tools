@@ -16,6 +16,7 @@ const FALLBACK_PROVIDERS: ProviderInfo[] = [
   { id: 'openrouter', name: 'OpenRouter (free models)', requiresKey: true, keyLabel: 'OpenRouter API key', keyHint: '', free: 'Free models available' },
   { id: 'gemini', name: 'Google Gemini (free tier)', requiresKey: true, keyLabel: 'Gemini API key', keyHint: '', free: 'Has a free tier' },
   { id: 'xkiro', name: 'xkiro (free models)', requiresKey: true, keyLabel: 'xkiro API key', keyHint: '', free: 'Free models available (:free)' },
+  { id: 'opencode', name: 'OpenCode (free allowance)', requiresKey: true, keyLabel: 'OpenCode API key', keyHint: '', free: 'Free allowance (space-bunny-free)' },
   { id: 'puter', name: 'Puter (1000+ models · monthly allowance)', requiresKey: false, keyLabel: '', keyHint: '', free: 'Free monthly allowance (≈$1/month) — resets monthly' },
 ]
 
@@ -92,7 +93,8 @@ export default function ModelPicker({ settings, onChange, big, onOpenSettings }:
   const current = providers.find((p) => p.id === settings.provider) || FALLBACK_PROVIDERS[0]
   const hasKey =
     (settings.provider !== 'openrouter' || Boolean(settings.openrouterKey)) &&
-    (settings.provider !== 'xkiro' || Boolean(settings.xkiroKey))
+    (settings.provider !== 'xkiro' || Boolean(settings.xkiroKey)) &&
+    (settings.provider !== 'opencode' || Boolean(settings.opencodeKey))
   const hasGeminiKey = settings.provider !== 'gemini' || settings.geminiKey
 
   const filtered = useMemo(() => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bot, Check, Coins, Globe, Info, Search, ShieldCheck } from 'lucide-react'
+import { Bot, Check, Coins, Globe, Info, Search, ShieldCheck, Sparkles } from 'lucide-react'
 import type { ProviderInfo, Settings } from '../types'
 import { fetchProviders, loadSettings, saveSettings } from '../api'
 
@@ -85,6 +85,21 @@ export default function SettingsPage() {
               value={settings.xkiroKey}
               onChange={(e) => update({ ...settings, xkiroKey: e.target.value })}
               placeholder="sk-xt-…"
+              autoComplete="off"
+            />
+          </label>
+        </div>
+
+        <div className="card">
+          <h2><Sparkles size={18} /> OpenCode — free allowance</h2>
+          <p className="hint">Free <code>oc_sk_…</code> key at <a href="https://opencode.ai" target="_blank" rel="noreferrer">opencode.ai</a>. Uses <code>space-bunny-free</code> — other Zen free models are restricted to the OpenCode app itself.</p>
+          <label>
+            <span>OpenCode API key</span>
+            <input
+              type="password"
+              value={settings.opencodeKey}
+              onChange={(e) => update({ ...settings, opencodeKey: e.target.value })}
+              placeholder="oc_sk_…"
               autoComplete="off"
             />
           </label>

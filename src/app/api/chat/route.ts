@@ -28,6 +28,7 @@ function parseChatBody(body: unknown): ChatRequest {
     openrouterKey: b.openrouterKey ? String(b.openrouterKey) : undefined,
     geminiKey: b.geminiKey ? String(b.geminiKey) : undefined,
     xkiroKey: b.xkiroKey ? String(b.xkiroKey) : undefined,
+    opencodeKey: b.opencodeKey ? String(b.opencodeKey) : undefined,
     webSearchKey: b.webSearchKey ? String(b.webSearchKey) : undefined,
     ollamaBaseUrl: b.ollamaBaseUrl ? String(b.ollamaBaseUrl) : undefined,
   }

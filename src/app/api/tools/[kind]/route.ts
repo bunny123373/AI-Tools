@@ -61,6 +61,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ kind: s
       openrouterKey: body.openrouterKey ? String(body.openrouterKey) : undefined,
       geminiKey: body.geminiKey ? String(body.geminiKey) : undefined,
       xkiroKey: body.xkiroKey ? String(body.xkiroKey) : undefined,
+      opencodeKey: body.opencodeKey ? String(body.opencodeKey) : undefined,
       ollamaBaseUrl: body.ollamaBaseUrl ? String(body.ollamaBaseUrl) : undefined,
     })
     return NextResponse.json({ result })

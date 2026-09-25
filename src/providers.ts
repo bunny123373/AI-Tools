@@ -36,6 +36,14 @@ export const PROVIDERS: ProviderInfo[] = [
     free: 'Free models available (:free)',
   },
   {
+    id: 'opencode',
+    name: 'OpenCode (free allowance)',
+    requiresKey: true,
+    keyLabel: 'OpenCode API key',
+    keyHint: 'Free `oc_sk_…` key from https://opencode.ai — works here with the Space Bunny model. Other Zen free models are restricted to the OpenCode app itself.',
+    free: 'Free allowance (space-bunny-free)',
+  },
+  {
     id: 'puter',
     name: 'Puter (1000+ models · monthly allowance)',
     requiresKey: false,
@@ -66,6 +74,7 @@ export const MODEL_DEFAULTS: Record<string, { chat: string; vision: string; visi
   },
   gemini: { chat: 'gemini-3.5-flash', vision: 'gemini-3.5-flash' },
   puter: { chat: 'gemini-3.5-flash-lite', vision: 'gemini-3.5-flash-lite' },
+  opencode: { chat: 'space-bunny-free', vision: 'space-bunny-free' },
 }
 
 /** Does this provider+model combination accept images for analysis? */
@@ -146,6 +155,9 @@ const STATIC_MODELS: Record<string, ModelChoice[]> = {
     { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'puter', free: true },
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'puter', free: true },
     { id: 'gemma-4-26b-a4b-it', name: 'Gemma 4 26B (fast open model)', provider: 'puter', free: true },
+  ],
+  opencode: [
+    { id: 'space-bunny-free', name: 'Space Bunny (free Zen model)', provider: 'opencode', free: true },
   ],
 }
 
@@ -371,7 +383,7 @@ function toGeminiContents(messages: ChatMessage[]): { contents: any[]; system?: 
 }
 
 export async function chat(opts: ChatRequest): Promise<string> {
-  const { provider, messages, openrouterKey, geminiKey, xkiroKey } = opts
+  const { provider, messages, openrouterKey, geminiKey, xkiroKey, opencodeKey } = opts
   const base = ollamaBase(opts)
   // "auto" / empty model names resolve to the provider's default model.
   const model = resolveChatModel(provider, opts.model)
@@ -426,6 +438,26 @@ export async function chat(opts: ChatRequest): Promise<string> {
       if (!reply) throw new Error('xkiro returned an empty reply.')
       return reply
     } catch (e) {
+      throw e
+    }
+  }
+
+  if (provider === 'opencode') {
+    const key = opencodeKey || process.env.OPENCODE_API_KEY || ''
+    if (!key) throw new Error('OpenCode needs an API key. Get a free one at https://opencode.ai and add it in Settings.')
+    try {
+      const data = await fetchJson('https://opencode.ai/zen/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages }),
+      })
+      const reply = data?.choices?.[0]?.message?.content
+      if (!reply) throw new Error('OpenCode returned an empty reply.')
+      return reply
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('can only be used from within OpenCode')) {
+        throw new Error('That OpenCode model is restricted to the OpenCode app — use space-bunny-free here.')
+      }
       throw e
     }
   }

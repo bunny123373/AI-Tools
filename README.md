@@ -7,6 +7,9 @@ A completely free, full-stack AI tools suite. Chat, summarize, improve, translat
   - 🦙 **Ollama** — runs locally on your PC, free forever, works offline
   - 🪙 **OpenRouter** — free `:free` models, $0 cost
   - 🌐 **Google Gemini** — generous free tier
+  - ⚡ **xkiro** — free `:free` models via OpenAI-compatible gateway
+  - 🐇 **OpenCode** — free allowance, `space-bunny-free` model
+  - 🖥️ **Puter** — 1000+ models, free monthly allowance (≈$1)
 
 ## ✨ Features
 
@@ -116,12 +119,12 @@ For tools and chat you can optionally pass `openrouterKey`, `geminiKey`, `ollama
 
 ## ☁️ Deploy: frontend on Vercel
 
-The app is a single Next.js app — chat, providers, images, web tools, PDFs, audio transcription, auth, prompt library. Import the repo on vercel.com; it detects Next automatically. Env vars: `AUTH_SECRET` (required), `AUTH_TRUST_HOST=true`, plus optional `XKIRO_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `PUTER_AUTH_TOKEN`, `AUTH_GOOGLE_ID/SECRET`, `AUTH_GITHUB_ID/SECRET`.
+The app is a single Next.js app — chat, providers, images, web tools, PDFs, audio transcription, auth, prompt library. Import the repo on vercel.com; it detects Next automatically. Env vars: `AUTH_SECRET` (required), `AUTH_TRUST_HOST=true`, plus optional `XKIRO_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `OPENCODE_API_KEY`, `PUTER_AUTH_TOKEN`, `AUTH_GOOGLE_ID/SECRET`, `AUTH_GITHUB_ID/SECRET`.
 
 Notes:
 
 - Generate `AUTH_SECRET` locally: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
-- **Ollama is local** — it can't reach your PC from Vercel serverless. Use xkiro / OpenRouter / Gemini keys (free tiers) for a public instance; users can also paste keys in Settings.
+- **Ollama is local** — it can't reach your PC from Vercel serverless. Use xkiro / OpenRouter / Gemini / OpenCode keys (free tiers) for a public instance; users can also paste keys in Settings.
 - **Chat history & accounts** are stored in `.data/` on the server disk — ephemeral on Vercel serverless, so they reset on redeploy. Use a database for durable, public deployment.
 - **Tavily web search** stays a per-user key in Settings (no env var).
 - **YouTube tools retired** — the YouTube tools (info, transcript, titles, playlist, download, subtitles) were removed from the site. The `backend/` Flask + yt-dlp service (Render) is left in the repo, dormant, with its `/youtube/*` endpoints, PO-token anti-bot-wall setup and `YT_COOKIES_CONTENT` escape hatch intact should the tools ever return. It currently has **no frontend consumer** — safe to stop the service or keep it running idle.

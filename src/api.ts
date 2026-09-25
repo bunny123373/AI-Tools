@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: Settings = {
   openrouterKey: '',
   geminiKey: '',
   xkiroKey: 'sk-xt-da8bbf8ca7493566b7fca3f600dcec43a30d9d4ece4398bb',
+  opencodeKey: 'oc_sk_304429191bb9_DJ_ahTUietyFyjBNG1l-UPSmMIT7W_1e',
   webSearchKey: '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',
   ollamaBaseUrl: 'http://localhost:11434',
 }

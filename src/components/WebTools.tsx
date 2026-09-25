@@ -93,6 +93,7 @@ export default function WebTools({ settings, initialMode }: Props) {
         openrouterKey: settings.openrouterKey || undefined,
         geminiKey: settings.geminiKey || undefined,
         xkiroKey: settings.xkiroKey || undefined,
+        opencodeKey: settings.opencodeKey || undefined,
         ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
       })
       setPreview(r.meta)

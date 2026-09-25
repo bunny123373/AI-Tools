@@ -44,6 +44,7 @@ export interface Settings {
   openrouterKey: string
   geminiKey: string
   xkiroKey: string
+  opencodeKey: string
   webSearchKey: string
   ollamaBaseUrl: string
 }
@@ -63,6 +64,7 @@ export interface ChatPayload {
   openrouterKey?: string
   geminiKey?: string
   xkiroKey?: string
+  opencodeKey?: string
   webSearchKey?: string
   ollamaBaseUrl?: string
 }
@@ -119,6 +121,7 @@ export interface ChatRequest {
   openrouterKey?: string
   geminiKey?: string
   xkiroKey?: string
+  opencodeKey?: string
   webSearchKey?: string
   ollamaBaseUrl?: string
 }

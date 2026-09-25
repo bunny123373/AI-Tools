@@ -51,6 +51,7 @@ export default function Tools({
         openrouterKey: settings.openrouterKey || undefined,
         geminiKey: settings.geminiKey || undefined,
         xkiroKey: settings.xkiroKey || undefined,
+        opencodeKey: settings.opencodeKey || undefined,
         ollamaBaseUrl: settings.ollamaBaseUrl || undefined,
       }
       if (kind === 'improve') payload.style = style

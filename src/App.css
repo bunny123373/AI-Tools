@@ -957,6 +957,11 @@ code {
   background: rgba(94, 162, 255, 0.14);
 }
 
+.qt-amber .qt-icon {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.14);
+}
+
 .qt-label {
   line-height: 1.3;
 }

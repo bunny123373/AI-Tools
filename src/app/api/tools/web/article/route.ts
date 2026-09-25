@@ -5,11 +5,34 @@ import { unfurlUrl } from '@/lib/unfurl'
 
 export const dynamic = 'force-dynamic'
 
+type Detail = 'brief' | 'standard' | 'detailed'
+
+/** Structure + word-cap per requested summary length. */
+const PLANS: Record<Detail, { structure: string; cap: string }> = {
+  brief: {
+    structure: '1. TL;DR — one sentence\n2. Key points — up to 3 short bullets',
+    cap: '120 words',
+  },
+  standard: {
+    structure:
+      '1. TL;DR — one or two sentences\n2. Key points — 4-6 bullets\n3. Takeaway — one sentence on why it matters',
+    cap: '300 words',
+  },
+  detailed: {
+    structure:
+      '1. TL;DR — two sentences\n2. Key points — 6-10 bullets\n3. Takeaway — one sentence on why it matters\n4. Notable quotes or statistics — only if present in the article',
+    cap: '600 words',
+  },
+}
+
 /** Article → AI summary: read the page server-side, summarize with the chosen provider. */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
   const url = String(body.url || '').trim()
   if (!url) return NextResponse.json({ error: 'Missing "url".' }, { status: 400 })
+  const detail: Detail = ['brief', 'standard', 'detailed'].includes(String(body.detail))
+    ? (String(body.detail) as Detail)
+    : 'standard'
   try {
     const meta = await unfurlUrl(url)
     if (!meta.text) {
@@ -18,10 +41,9 @@ export async function POST(req: Request) {
         { status: 422 },
       )
     }
+    const plan = PLANS[detail]
     const prompt = `Summarize the article below. Use this structure:
-1. TL;DR — one or two sentences
-2. Key points — 4-6 bullets
-3. Takeaway — one sentence on why it matters
+${plan.structure}
 
 TITLE: ${meta.title}
 ${meta.description ? `DESCRIPTION: ${meta.description}\n` : ''}
@@ -32,8 +54,7 @@ ${meta.text}`
     const messages: ChatMessage[] = [
       {
         role: 'system',
-        content:
-          'You are a precise summarizer. Stay faithful to the article, do not invent facts, and keep the response under 300 words.',
+        content: `You are a precise summarizer. Stay faithful to the article, do not invent facts, and keep the response under ${plan.cap}.`,
       },
       { role: 'user', content: prompt },
     ]

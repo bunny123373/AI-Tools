@@ -5,6 +5,7 @@ import {
   Globe,
   Languages,
   LayoutGrid,
+  Mic,
   Terminal,
   Wand2,
   type LucideIcon,
@@ -56,6 +57,12 @@ export default function QuickTools({ className, onNavigate, onSeed, onMore, onFo
       icon: Clapperboard,
       accent: 'purple',
       action: () => onSeed('Give me 10 YouTube video ideas with titles, hooks and a short outline. Topic: '),
+    },
+    {
+      label: 'Transcribe Audio',
+      icon: Mic,
+      accent: 'amber',
+      action: () => onNavigate({ tab: 'tools', tool: 'transcribe' }),
     },
     { label: 'More Tools', icon: LayoutGrid, accent: 'blue', action: onMore },
   ]

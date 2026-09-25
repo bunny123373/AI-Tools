@@ -767,3 +767,37 @@ async function srcToBuffer(src: string, mimeFallback: string, timeoutMs: number)
 async function imgSrcToBuffer(src: string): Promise<{ data: Buffer; mimeType: string }> {
   return srcToBuffer(src, 'image/png', 120000)
 }
+
+// SenseNova's image endpoint only accepts a fixed set of 7 pixel resolutions —
+// anything else (e.g. an arbitrary 16:9 → 1280x720) returns HTTP 400
+// "Unsupported size". Snap the requested width×height to the nearest supported
+// SenseNova size instead of failing the whole generation. Exact matches (and
+// 1:1) pass through unchanged; other aspects keep their original orientation
+// (landscape stays landscape, portrait stays portrait).
+export function snapToSenseNovaSize(width: number, height: number): [number, number] {
+  const sizes: [number, number][] = [
+    [256, 256],
+    [512, 512],
+    [1024, 1024],
+    [1024, 1792],
+    [1792, 1024],
+    [1024, 1536],
+    [1536, 1024],
+    [768, 1536],
+    [1536, 768],
+  ]
+  const w = Math.max(64, Math.min(1600, Number(width) || 1024))
+  const h = Math.max(64, Math.min(1600, Number(height) || 1024))
+  let best = sizes[0]
+  let bestScore = Infinity
+  for (const [sw, sh] of sizes) {
+    // Chebyshev-ish distance on both dimensions; prefers same-orientation
+    // candidates so 3:2 doesn't collapse to 2:3.
+    const d = Math.max(Math.abs(sw - w), Math.abs(sh - h))
+    if (d < bestScore) {
+      bestScore = d
+      best = [sw, sh]
+    }
+  }
+  return best
+}

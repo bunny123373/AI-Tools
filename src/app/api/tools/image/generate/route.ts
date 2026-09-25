@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { generateGeminiImage, generatePuterImage, generateXkiroImage } from '@/providers'
+import { generateGeminiImage, generatePuterImage, generateXkiroImage, snapToSenseNovaSize } from '@/providers'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,8 +78,11 @@ export async function POST(req: Request) {
   }
 
   if (body.provider === 'xkiro') {
-    const width = Math.min(1600, Math.max(64, Number(body.width) || 1024))
-    const height = Math.min(1600, Math.max(64, Number(body.height) || 1024))
+    // SenseNova's image API only accepts a fixed set of pixel sizes — anything
+    // else (e.g. an arbitrary 16:9 → 1280x720) gets HTTP 400 "Unsupported size".
+    // Snap the requested aspect to the nearest supported resolution instead of
+    // failing the whole generation.
+    const [width, height] = snapToSenseNovaSize(Number(body.width) || 1024, Number(body.height) || 1024)
     try {
       const { data, mimeType } = await generateXkiroImage({
         prompt: prompt.slice(0, 4000),
@@ -102,7 +105,6 @@ export async function POST(req: Request) {
       )
     }
   }
-
   const width = Math.min(1600, Math.max(64, Number(body.width) || 1024))
   const height = Math.min(1600, Math.max(64, Number(body.height) || 1024))
   const seed = Number(body.seed) || Math.floor(Math.random() * 1_000_000_000)

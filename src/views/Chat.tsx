@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Bot, Download, Globe, ImageIcon, MessageSquarePlus, Mic, MicOff, Paperclip, Send, Sparkles, Volume2, VolumeX, X } from 'lucide-react'
+import { Bot, Download, ImageIcon, MessageSquarePlus, Mic, MicOff, Paperclip, Send, Sparkles, Volume2, VolumeX, X } from 'lucide-react'
 import type { Tab } from '../components/TopBar'
 import type { ChatMessage, SearchSource, Settings } from '../types'
 import { analyzeImage, createChat, generateImageInfo, getChat, loadSettings, saveChat, saveSettings, sendChat } from '../api'
@@ -51,7 +51,7 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
   const [busy, setBusy] = useState(false)
   const [showSystem, setShowSystem] = useState(false)
   const [system, setSystem] = useState('You are a helpful, honest assistant.')
-  const [web, setWeb] = useState<'off' | 'on'>('on')
+  const [web] = useState<'off' | 'on'>('on')
   // Image attached to the next message — stays in the chat, never jumps tabs.
   const [attach, setAttach] = useState<{ dataUrl: string; name: string } | null>(null)
   // Composer switched to image-generation mode (like ChatGPT's image toggle).
@@ -445,19 +445,6 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
           rows={2}
         />
 
-        <div className="cw-search">
-          <Globe size={14} />
-          <select
-            value={web}
-            onChange={(e) => setWeb(e.target.value as 'off' | 'on')}
-            aria-label="Web search"
-            title="Web search"
-          >
-            <option value="off">Web search: Off</option>
-            <option value="on">Web search: On</option>
-          </select>
-        </div>
-
         <button
           className="primary composer-send"
           onClick={() => void send()}
@@ -467,18 +454,6 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
           <span>{genMode ? 'Generate' : 'Send'}</span>
         </button>
       </div>
-      {web === 'on' && !genMode && (
-        <p className="hint composer-note">
-          {settings.webSearchKey ? (
-            <>Web search is on — fresh results are included with your message and cited in the reply.</>
-          ) : (
-            <>
-              Web search needs a free Tavily API key — add one in <em>Settings</em>, or switch{' '}
-              <em>Web search: Off</em>.
-            </>
-          )}
-        </p>
-      )}
     </div>
   )
 

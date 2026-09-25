@@ -137,8 +137,8 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
     }
   }
 
-  const send = async () => {
-    const text = input.trim()
+  const send = async (textOverride?: string) => {
+    const text = (textOverride ?? input).trim()
     const hasAttach = !!attach
     if ((!text && !hasAttach) || busy || loadingChat) return
     // Cancel any in-progress voice input before sending.
@@ -223,10 +223,8 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
     }
   }
 
-  const startPrompt = (p: string) => {
-    setInput(p)
-    inputRef.current?.focus()
-  }
+  // ChatGPT-style "fast reply": tapping a suggestion card sends it immediately.
+  const fastReply = (p: string) => void send(p)
 
   // Actually generate the image (called from the style chips). The user message
   // is already in `messages`; we just append the assistant image message once
@@ -328,6 +326,8 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
   }
 
   const welcome = !loadingChat && messages.length === 0
+  // ChatGPT-style: the send (arrow) button only exists while there is text.
+  const hasInput = !!(input.trim() || attach)
 
   const composer = (
     <div className="composer">
@@ -413,18 +413,6 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
           <ImageIcon size={17} />
         </button>
 
-        {sttSupported && (
-          <button
-            type="button"
-            className={`composer-icon ${listening ? 'listening' : ''}`}
-            title={listening ? 'Stop voice input' : 'Speak to type — free, in your browser'}
-            aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-            onClick={toggleMic}
-          >
-            {listening ? <MicOff size={17} /> : <Mic size={17} />}
-          </button>
-        )}
-
         <textarea
           ref={inputRef}
           value={input}
@@ -440,19 +428,32 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
               ? 'Describe the image to create… (Enter to generate)'
               : attach
                 ? 'Ask anything about this image… (Enter to send)'
-                : 'Ask anything… (Enter to send, Shift+Enter for a new line)'
+                : 'Message ChatGPT'
           }
           rows={2}
         />
 
-        <button
-          className="primary composer-send"
-          onClick={() => void send()}
-          disabled={busy || (!input.trim() && !attach)}
-        >
-          {genMode ? <Sparkles size={16} /> : <Send size={16} />}
-          <span>{genMode ? 'Generate' : 'Send'}</span>
-        </button>
+        <div className="composer-right">
+          {sttSupported && (listening || !hasInput) && (
+            <button
+              type="button"
+              className={`composer-icon ${listening ? 'listening' : ''}`}
+              title={listening ? 'Stop voice input' : 'Speak to type — free, in your browser'}
+              aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+              onClick={toggleMic}
+            >
+              {listening ? <MicOff size={17} /> : <Mic size={17} />}
+            </button>
+          )}
+
+          <button
+            className={`primary composer-send ${hasInput ? 'show' : ''}`}
+            onClick={() => void send()}
+            disabled={busy || !hasInput}
+          >
+            <Send size={17} />
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -460,27 +461,33 @@ export default function Chat({ seed, initialId, onHistoryChanged, onOpenSettings
   return (
     <div className={`page chat-page ${welcome ? 'welcome' : ''}`}>
       {welcome ? (
-        <>
-          <ModelPicker big settings={settings} onChange={update} onOpenSettings={onOpenSettings} />
+        <div className="chatgpt-home">
+          <div className="chatgpt-home-inner">
+            <h1 className="chatgpt-greeting">How can I help you today?</h1>
 
-          <div className="chat-welcome">
-            <div className="cw-icon">
-              <Sparkles size={26} />
+            <div className="chatgpt-picker-row">
+              <ModelPicker chatgpt settings={settings} onChange={update} onOpenSettings={onOpenSettings} />
             </div>
-            <h2>How can I help you today?</h2>
-            <p>Ask a question, generate images, analyze photos, write code, or use any tool from the sidebar.</p>
-            <div className="cw-suggestions">
+
+            <div className="chatgpt-suggestions" role="group" aria-label="Suggestions">
               {SUGGESTIONS.map((s) => (
-                <button key={s.label} className="cw-suggestion" onClick={() => startPrompt(s.prompt)}>
-                  <span className="cs-label">{s.label}</span>
-                  <span className="cs-prompt">{s.prompt}</span>
+                <button
+                  key={s.label}
+                  type="button"
+                  className="chatgpt-suggestion"
+                  onClick={() => fastReply(s.prompt)}
+                >
+                  <span className="cg-s-label">{s.label}</span>
+                  <span className="cg-s-prompt">{s.prompt}</span>
                 </button>
               ))}
             </div>
-          </div>
 
-          {composer}
-        </>
+            {composer}
+
+            <p className="chatgpt-disclaimer">AI Toolbox can make mistakes. Check important info.</p>
+          </div>
+        </div>
       ) : (
         <>
           <div className="chat-top">

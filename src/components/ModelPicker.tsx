@@ -8,6 +8,8 @@ interface Props {
   onChange: (s: Settings) => void
   /** Show the large hero-style card (welcome screen) with a settings button. */
   big?: boolean
+  /** ChatGPT-style: compact pill trigger + dropdown panel under it (new home). */
+  chatgpt?: boolean
   onOpenSettings?: () => void
 }
 
@@ -31,7 +33,7 @@ function shortDesc(m: ModelChoice): string {
   return 'Conversation & tasks'
 }
 
-export default function ModelPicker({ settings, onChange, big, onOpenSettings }: Props) {
+export default function ModelPicker({ settings, onChange, big, chatgpt, onOpenSettings }: Props) {
   const [providers, setProviders] = useState<ProviderInfo[]>(FALLBACK_PROVIDERS)
   const [models, setModels] = useState<ModelChoice[]>([])
   const [note, setNote] = useState('')
@@ -148,161 +150,194 @@ export default function ModelPicker({ settings, onChange, big, onOpenSettings }:
     </button>
   )
 
+  const chatgptTrigger = chatgpt ? (
+    <button
+      type="button"
+      className="cg-picker-trigger"
+      onClick={openModal}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      title={`Model: ${modelLabel} · ${current.name}`}
+    >
+      <Sparkles size={15} className="cg-picker-icon" />
+      <span className="cg-picker-model">{modelLabel}</span>
+      <ChevronDown size={14} className="picker-chevron cg-picker-chevron" />
+    </button>
+  ) : null
+
+  const panel = (
+    <div
+      className={chatgpt ? 'cg-picker-dropdown' : 'picker-modal'}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Select a model"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="picker-modal-header">
+        <h3>Select a model</h3>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Close"
+          onClick={() => setOpen(false)}
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="picker-modal-search">
+        <Search size={16} />
+        <input
+          ref={searchRef}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setShowAll(false)
+          }}
+          placeholder="Search models…"
+          aria-label="Search models"
+        />
+      </div>
+
+      <div className="picker-modal-body">
+        <div className="picker-providers" role="tablist" aria-label="AI providers">
+          {providers.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="tab"
+              aria-selected={p.id === settings.provider}
+              className={`picker-provider ${p.id === settings.provider ? 'active' : ''}`}
+              onClick={() => {
+                if (p.id !== settings.provider) {
+                  void refreshModels(p.id)
+                  setQuery('')
+                  setShowAll(false)
+                }
+              }}
+            >
+              <span className="picker-provider-name">{p.name}</span>
+              <span className="picker-provider-free">{p.free}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="picker-models" role="tabpanel">
+          {!loading && (
+            <button
+              type="button"
+              className={`picker-model picker-auto ${isAuto ? 'active' : ''}`}
+              onClick={() => pick('auto')}
+            >
+              <span className="picker-model-main">
+                <Sparkles size={14} className="picker-auto-icon" />
+                <span className="picker-model-name">Auto (smart default)</span>
+              </span>
+              <span className="picker-model-desc">
+                Picks a good model automatically — vision-capable when you attach an image
+              </span>
+              {isAuto && <Check size={16} className="picker-model-check" />}
+            </button>
+          )}
+          {loading && <p className="hint picker-loading">Loading models…</p>}
+          {!loading && visible.length === 0 && <p className="hint">No models found.</p>}
+          {!loading &&
+            visible.map((m) => {
+              const selected = m.id === settings.model
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`picker-model ${selected ? 'active' : ''}`}
+                  onClick={() => pick(m.id)}
+                >
+                  <span className="picker-model-main">
+                    <span className="picker-model-name">{m.name}</span>
+                    {m.id.startsWith('gpt-image') || /(img|image)/i.test(m.id) ? (
+                      <span className="badge">image</span>
+                    ) : /(veo|video|seedance)/i.test(m.id) ? (
+                      <span className="badge">video</span>
+                    ) : null}
+                  </span>
+                  <span className="picker-model-desc">{shortDesc(m)}</span>
+                  {selected && <Check size={16} className="picker-model-check" />}
+                </button>
+              )
+            })}
+          {!loading && filtered.length > 8 && (
+            <button
+              type="button"
+              className="picker-more"
+              onClick={() => setShowAll((s) => !s)}
+            >
+              {showAll ? 'Show fewer' : `See all ${filtered.length} models`}
+            </button>
+          )}
+          {note && <p className="hint picker-note">{note}</p>}
+        </div>
+      </div>
+
+      <div className="picker-modal-footer">
+        {current.requiresKey && !hasKey && (
+          <span className="hint warn picker-footer-warn">
+            {current.keyLabel} not set.
+          </span>
+        )}
+        {big && onOpenSettings && (
+          <button
+            type="button"
+            className="icon-btn picker-settings"
+            title="Provider settings"
+            aria-label="Provider settings"
+            onClick={() => {
+              setOpen(false)
+              onOpenSettings()
+            }}
+          >
+            <SlidersHorizontal size={18} />
+          </button>
+        )}
+        {hasGeminiKey && current.id === 'gemini'}
+      </div>
+    </div>
+  )
+
   return (
     <>
-      {trigger}
-      {big && current && (
-        <p className="hint picker-status">
-          <span className="status-dot" />
-          <span>
-            <strong>{current.name}</strong> — {current.free}
-          </span>
-        </p>
-      )}
-      {big && current.requiresKey && !hasKey && (
-        <p className="hint warn">
-            <span>
-              {current.keyLabel} is not set. Add it in the <em>Settings</em> tab, or use a free model — no paid tier required.
-            </span>
-          </p>
-      )}
-      {open && (
-        <div className="picker-overlay" onClick={() => setOpen(false)}>
-          <div
-            className="picker-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Select a model"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="picker-modal-header">
-              <h3>Select a model</h3>
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label="Close"
-                onClick={() => setOpen(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="picker-modal-search">
-              <Search size={16} />
-              <input
-                ref={searchRef}
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  setShowAll(false)
-                }}
-                placeholder="Search models…"
-                aria-label="Search models"
-              />
-            </div>
-
-            <div className="picker-modal-body">
-              <div className="picker-providers" role="tablist" aria-label="AI providers">
-                {providers.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={p.id === settings.provider}
-                    className={`picker-provider ${p.id === settings.provider ? 'active' : ''}`}
-                    onClick={() => {
-                      if (p.id !== settings.provider) {
-                        void refreshModels(p.id)
-                        setQuery('')
-                        setShowAll(false)
-                      }
-                    }}
-                  >
-                    <span className="picker-provider-name">{p.name}</span>
-                    <span className="picker-provider-free">{p.free}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="picker-models" role="tabpanel">
-                {!loading && (
-                  <button
-                    type="button"
-                    className={`picker-model picker-auto ${isAuto ? 'active' : ''}`}
-                    onClick={() => pick('auto')}
-                  >
-                    <span className="picker-model-main">
-                      <Sparkles size={14} className="picker-auto-icon" />
-                      <span className="picker-model-name">Auto (smart default)</span>
-                    </span>
-                    <span className="picker-model-desc">
-                      Picks a good model automatically — vision-capable when you attach an image
-                    </span>
-                    {isAuto && <Check size={16} className="picker-model-check" />}
-                  </button>
-                )}
-                {loading && <p className="hint picker-loading">Loading models…</p>}
-                {!loading && visible.length === 0 && <p className="hint">No models found.</p>}
-                {!loading &&
-                  visible.map((m) => {
-                    const selected = m.id === settings.model
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`picker-model ${selected ? 'active' : ''}`}
-                        onClick={() => pick(m.id)}
-                      >
-                        <span className="picker-model-main">
-                          <span className="picker-model-name">{m.name}</span>
-                          {m.id.startsWith('gpt-image') || /(img|image)/i.test(m.id) ? (
-                            <span className="badge">image</span>
-                          ) : /(veo|video|seedance)/i.test(m.id) ? (
-                            <span className="badge">video</span>
-                          ) : null}
-                        </span>
-                        <span className="picker-model-desc">{shortDesc(m)}</span>
-                        {selected && <Check size={16} className="picker-model-check" />}
-                      </button>
-                    )
-                  })}
-                {!loading && filtered.length > 8 && (
-                  <button
-                    type="button"
-                    className="picker-more"
-                    onClick={() => setShowAll((s) => !s)}
-                  >
-                    {showAll ? 'Show fewer' : `See all ${filtered.length} models`}
-                  </button>
-                )}
-                {note && <p className="hint picker-note">{note}</p>}
-              </div>
-            </div>
-
-            <div className="picker-modal-footer">
-              {current.requiresKey && !hasKey && (
-                <span className="hint warn picker-footer-warn">
-                  {current.keyLabel} not set.
-                </span>
-              )}
-              {big && onOpenSettings && (
-                <button
-                  type="button"
-                  className="icon-btn picker-settings"
-                  title="Provider settings"
-                  aria-label="Provider settings"
-                  onClick={() => {
-                    setOpen(false)
-                    onOpenSettings()
-                  }}
-                >
-                  <SlidersHorizontal size={18} />
-                </button>
-              )}
-              {hasGeminiKey && current.id === 'gemini'}
-            </div>
-          </div>
+      {chatgpt ? (
+        <div className="cg-picker-wrap">
+          {chatgptTrigger}
+          {open && (
+            <>
+              <div className="cg-picker-backdrop" onClick={() => setOpen(false)} />
+              {panel}
+            </>
+          )}
         </div>
+      ) : (
+        <>
+          {trigger}
+          {big && current && (
+            <p className="hint picker-status">
+              <span className="status-dot" />
+              <span>
+                <strong>{current.name}</strong> — {current.free}
+              </span>
+            </p>
+          )}
+          {big && current.requiresKey && !hasKey && (
+            <p className="hint warn">
+              <span>
+                {current.keyLabel} is not set. Add it in the <em>Settings</em> tab, or use a free model — no paid tier required.
+              </span>
+            </p>
+          )}
+          {open && (
+            <div className="picker-overlay" onClick={() => setOpen(false)}>
+              {panel}
+            </div>
+          )}
+        </>
       )}
     </>
   )

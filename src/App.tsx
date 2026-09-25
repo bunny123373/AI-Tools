@@ -176,15 +176,17 @@ export default function App() {
               </>
             )}
 
-            <div className="qt-inline">
-              <div className="sb-label">Quick tools</div>
-              <QuickTools
-                onNavigate={openTool}
-                onSeed={usePrompt}
-                onMore={moreTools}
-                onFocusSearch={focusSearch}
-              />
-            </div>
+            {tab !== 'chat' && (
+              <div className="qt-inline">
+                <div className="sb-label">Quick tools</div>
+                <QuickTools
+                  onNavigate={openTool}
+                  onSeed={usePrompt}
+                  onMore={moreTools}
+                  onFocusSearch={focusSearch}
+                />
+              </div>
+            )}
           </div>
 
           <footer className="footer">
@@ -204,13 +206,15 @@ export default function App() {
           </footer>
         </main>
 
-        <RightSidebar
-          onNavigate={openTool}
-          onSeed={usePrompt}
-          onMore={moreTools}
-          onFocusSearch={focusSearch}
-          onNav={goTab}
-        />
+        {tab !== 'chat' && (
+          <RightSidebar
+            onNavigate={openTool}
+            onSeed={usePrompt}
+            onMore={moreTools}
+            onFocusSearch={focusSearch}
+            onNav={goTab}
+          />
+        )}
       </div>
 
       {touchbar && (

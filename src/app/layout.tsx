@@ -8,7 +8,7 @@ import Providers from '@/components/auth/Providers'
 export const metadata: Metadata = {
   title: 'AI Toolbox — Free AI Tools',
   description:
-    'Free AI toolbox — chat, summarize, improve and translate with Ollama, OpenRouter free models, or Gemini free tier.',
+    'Free AI toolbox — chat, code, summarize, improve, translate and create images/video with OpenCode free, OpenRouter free models, or Gemini free tier.',
   icons: { icon: '/tools.png' },
 }
 

@@ -44,7 +44,7 @@ export default function RightSidebar({ onNavigate, onSeed, onMore, onFocusSearch
       <div className="tip-card">
         <Lightbulb size={16} />
         <p>
-          <strong>Tip</strong> — Use local models (Ollama) for private chats. No internet needed!
+          <strong>Tip</strong> — Use the free models for coding, chatting, and image/video creation. No paid tier needed!
         </p>
       </div>
     </aside>

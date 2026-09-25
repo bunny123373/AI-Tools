@@ -162,7 +162,7 @@ export default function ModelPicker({ settings, onChange, big, onOpenSettings }:
       {big && current.requiresKey && !hasKey && (
         <p className="hint warn">
             <span>
-              {current.keyLabel} is not set. Add it in the <em>Settings</em> tab, or switch to Ollama for fully local use.
+              {current.keyLabel} is not set. Add it in the <em>Settings</em> tab, or use a free model — no paid tier required.
             </span>
           </p>
       )}

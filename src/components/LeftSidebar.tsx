@@ -180,7 +180,7 @@ export default function LeftSidebar({ active, onNav, onNewChat, onSeed, activeCh
 
           <div className="sb-offline">
             <Sparkles size={13} />
-            <span>Runs fully local with Ollama — no internet needed.</span>
+            <span>Free chat, coding, image & video — no paid tier needed.</span>
           </div>
         </div>
       </div>
